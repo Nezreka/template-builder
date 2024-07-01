@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Template {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+
+  sections    TemplateSection[]
+  globalCss   TemplateCssFile[]
+  globalJs    TemplateJsFile[]
+}
+
+model Section {
+  id          String   @id @default(uuid())
+  name        String   // e.g., "Hero", "About Team", "Featured Listings"
+
+  templates   TemplateSection[]
+}
+
+model TemplateSection {
+  id          String   @id @default(uuid())
+  order       Int
+  htmlContent String
+
+  template    Template @relation(fields: [templateId], references: [id])
+  templateId  String
+  section     Section  @relation(fields: [sectionId], references: [id])
+  sectionId   String
+
+  css         SectionCssFile[]
+  js          SectionJsFile[]
+
+  @@unique([templateId, sectionId])
+}
+
+model CssFile {
+  id        String   @id @default(uuid())
+  filename  String
+  content   String
+
+  templates TemplateCssFile[]
+  sections  SectionCssFile[]
+}
+
+model JsFile {
+  id        String   @id @default(uuid())
+  filename  String
+  content   String
+
+  templates TemplateJsFile[]
+  sections  SectionJsFile[]
+}
+
+model TemplateCssFile {
+  template    Template @relation(fields: [templateId], references: [id])
+  templateId  String
+  cssFile     CssFile  @relation(fields: [cssFileId], references: [id])
+  cssFileId   String
+
+  @@id([templateId, cssFileId])
+}
+
+model TemplateJsFile {
+  template    Template @relation(fields: [templateId], references: [id])
+  templateId  String
+  jsFile      JsFile   @relation(fields: [jsFileId], references: [id])
+  jsFileId    String
+
+  @@id([templateId, jsFileId])
+}
+
+model SectionCssFile {
+  templateSection    TemplateSection @relation(fields: [templateSectionId], references: [id])
+  templateSectionId  String
+  cssFile            CssFile         @relation(fields: [cssFileId], references: [id])
+  cssFileId          String
+
+  @@id([templateSectionId, cssFileId])
+}
+
+model SectionJsFile {
+  templateSection    TemplateSection @relation(fields: [templateSectionId], references: [id])
+  templateSectionId  String
+  jsFile             JsFile          @relation(fields: [jsFileId], references: [id])
+  jsFileId           String
+
+  @@id([templateSectionId, jsFileId])
+}
