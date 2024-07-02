@@ -2,12 +2,13 @@
 
 import { useDrop, useDrag } from 'react-dnd'
 import { useRef, useState } from 'react'
-import { ChevronUp, ChevronDown } from 'lucide-react'
+import { ChevronUp, ChevronDown, X } from 'lucide-react'
 import TemplateSelectorModal from './TemplateSelectorModal'
 
 interface BuildAreaProps {
   template: string[]
   addToTemplate: (item: string) => void
+  removeFromTemplate: (item: string) => void
   reorderTemplate: (dragIndex: number, hoverIndex: number) => void
   updateTemplateItem: (index: number, newTemplate: string) => void
 }
@@ -18,12 +19,13 @@ interface DragItem {
   type: string
 }
 
-function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemplateItem }: { 
+function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemplateItem, removeFromTemplate }: { 
   item: string, 
   index: number, 
   reorderTemplate: (dragIndex: number, hoverIndex: number) => void,
   templateLength: number,
-  updateTemplateItem: (index: number, newTemplate: string) => void
+  updateTemplateItem: (index: number, newTemplate: string) => void,
+  removeFromTemplate: (item: string) => void
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -58,15 +60,21 @@ function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemp
     },
   })
 
-  const [{ isDragging }, drag] = useDrag({
+  const [{ isDragging }, drag] = useDrag(() => ({
     type: 'templateItem',
     item: () => {
-      return { id: item, index }
+      return { id: item, index, type: 'templateItem' }
+    },
+    end: (item, monitor) => {
+      const dropResult = monitor.getDropResult()
+      if (!dropResult) {
+        removeFromTemplate(item.id)
+      }
     },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  })
+  }), [item, index, removeFromTemplate])
 
   const opacity = isDragging ? 0.4 : 1
   drag(drop(ref))
@@ -78,54 +86,72 @@ function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemp
     }
   }
 
+  const handleSelectTemplate = (newTemplate: string) => {
+    updateTemplateItem(index, newTemplate)
+    setIsModalOpen(false)
+  }
+
   return (
     <>
       <div 
         ref={ref} 
         style={{ opacity }} 
-        className="luxury-panel p-4 transition-all group relative cursor-pointer" 
+        className="luxury-panel p-4 transition-all group relative cursor-move" 
         data-handler-id={handlerId}
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => setIsModalOpen(true)}  // Add this line
       >
-        <div className="flex items-center">
-          <span className="mr-3 text-2xl cursor-move text-[var(--accent-color)]">☰</span>
-          <div>
-            <h3 className="text-lg font-semibold">{item}</h3>
-            <p className="text-sm text-gray-400">Click to select template</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <span className="mr-3 text-2xl text-[var(--accent-color)]">☰</span>
+            <div>
+              <h3 className="text-lg font-semibold">{item}</h3>
+              <p className="text-sm text-gray-400">Click to select template</p>
+            </div>
           </div>
-        </div>
-        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={(e) => { e.stopPropagation(); moveItem('up'); }}
-            className="p-1 hover:bg-[var(--secondary-color)] rounded"
-            disabled={index === 0}
-          >
-            <ChevronUp size={20} className="text-[var(--accent-color)]" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); moveItem('down'); }}
-            className="p-1 hover:bg-[var(--secondary-color)] rounded"
-            disabled={index === templateLength - 1}
-          >
-            <ChevronDown size={20} className="text-[var(--accent-color)]" />
-          </button>
+          <div className="flex items-center">
+            <button
+              onClick={(e) => { e.stopPropagation(); moveItem('up'); }}
+              className="p-1 hover:bg-[var(--secondary-color)] rounded mr-1"
+              disabled={index === 0}
+            >
+              <ChevronUp size={20} className="text-[var(--accent-color)]" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); moveItem('down'); }}
+              className="p-1 hover:bg-[var(--secondary-color)] rounded mr-1"
+              disabled={index === templateLength - 1}
+            >
+              <ChevronDown size={20} className="text-[var(--accent-color)]" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); removeFromTemplate(item); }}
+              className="p-1 hover:bg-[var(--secondary-color)] rounded"
+            >
+              <X size={20} className="text-[var(--accent-color)]" />
+            </button>
+          </div>
         </div>
       </div>
       <TemplateSelectorModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         sectionType={item}
-        onSelectTemplate={(template) => updateTemplateItem(index, `${item} - ${template}`)}
+        onSelectTemplate={handleSelectTemplate}
       />
     </>
   )
 }
 
-export default function BuildArea({ template, addToTemplate, reorderTemplate, updateTemplateItem }: BuildAreaProps) {
+export default function BuildArea({ template, addToTemplate, removeFromTemplate, reorderTemplate, updateTemplateItem }: BuildAreaProps) {
   const [, drop] = useDrop(() => ({
-    accept: 'option',
-    drop: (item: { name: string }) => addToTemplate(item.name),
-  }))
+    accept: ['option', 'templateItem'],
+    drop: (item: { name: string, type: string }, monitor) => {
+      if (item.type === 'option') {
+        addToTemplate(item.name)
+      }
+      return { name: 'BuildArea' }
+    },
+  }), [addToTemplate])
 
   return (
     <div ref={drop} className="luxury-panel flex-1 p-8 overflow-hidden flex flex-col">
@@ -139,6 +165,7 @@ export default function BuildArea({ template, addToTemplate, reorderTemplate, up
             reorderTemplate={reorderTemplate} 
             templateLength={template.length}
             updateTemplateItem={updateTemplateItem}
+            removeFromTemplate={removeFromTemplate}
           />
         ))}
         {template.length === 0 && (

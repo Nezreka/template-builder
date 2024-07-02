@@ -2,49 +2,72 @@
 
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Sidebar from './components/Sidebar'
 import BuildArea from './components/BuildArea'
 import TemplateModal from './components/TemplateModal'
 
+const allOptions = [
+  'Hero', 'About Team', 'Featured Listings', 'Featured Neighborhoods',
+  'Our Stats', 'Latest Blogs', 'Buy a home CTA', 'Sell a home CTA',
+  'Home worth CTA', 'Contact information / form', 'Combined CTA'
+];
+
 export default function Home() {
   const [template, setTemplate] = useState<string[]>([])
+  const [availableOptions, setAvailableOptions] = useState<string[]>(allOptions)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>()
 
-  const addToTemplate = (item: string) => {
-    setTemplate(prevTemplate => [...prevTemplate, item])
-  }
+  const addToTemplate = useCallback((item: string) => {
+    setTemplate(prevTemplate => {
+      if (!prevTemplate.includes(item)) {
+        return [...prevTemplate, item]
+      }
+      return prevTemplate
+    })
+    setAvailableOptions(prevOptions => prevOptions.filter(option => option !== item))
+  }, [])
 
-  const reorderTemplate = (dragIndex: number, hoverIndex: number) => {
+  const removeFromTemplate = useCallback((item: string) => {
+    setTemplate(prevTemplate => prevTemplate.filter(i => i !== item))
+    setAvailableOptions(prevOptions => {
+      if (!prevOptions.includes(item)) {
+        return [...prevOptions, item]
+      }
+      return prevOptions
+    })
+  }, [])
+
+  const reorderTemplate = useCallback((dragIndex: number, hoverIndex: number) => {
     setTemplate(prevTemplate => {
       const updatedTemplate = [...prevTemplate]
       const [reorderedItem] = updatedTemplate.splice(dragIndex, 1)
       updatedTemplate.splice(hoverIndex, 0, reorderedItem)
       return updatedTemplate
     })
-  }
+  }, [])
 
-  const updateTemplateItem = (index: number, newTemplate: string) => {
+  const updateTemplateItem = useCallback((index: number, newTemplate: string) => {
     setTemplate(prevTemplate => {
       const updatedTemplate = [...prevTemplate]
       updatedTemplate[index] = newTemplate
       return updatedTemplate
     })
-  }
+  }, [])
 
-  const openAddModal = () => {
+  const openAddModal = useCallback(() => {
     setModalMode('add')
     setSelectedTemplateId(undefined)
     setIsModalOpen(true)
-  }
+  }, [])
 
-  const openEditModal = (templateId: string) => {
+  const openEditModal = useCallback((templateId: string) => {
     setModalMode('edit')
     setSelectedTemplateId(templateId)
     setIsModalOpen(true)
-  }
+  }, [])
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -58,10 +81,14 @@ export default function Home() {
           </button>
         </div>
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
+          <Sidebar 
+            availableOptions={availableOptions}
+            addToTemplate={addToTemplate}
+          />
           <BuildArea 
             template={template} 
             addToTemplate={addToTemplate} 
+            removeFromTemplate={removeFromTemplate}
             reorderTemplate={reorderTemplate}
             updateTemplateItem={updateTemplateItem}
           />

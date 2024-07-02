@@ -1,10 +1,11 @@
 // app/components/TemplateModal.tsx
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog } from '@headlessui/react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { X } from 'lucide-react';
 
 type ModalMode = 'add' | 'edit';
 
@@ -15,7 +16,7 @@ interface TemplateModalProps {
   templateId?: string;
 }
 
-const sectionTypes = [
+const allSectionTypes = [
   'Hero', 'About Team', 'Featured Listings', 'Featured Neighborhoods',
   'Our Stats', 'Latest Blogs', 'Buy a home CTA', 'Sell a home CTA',
   'Home worth CTA', 'Contact information / form', 'Combined CTA'
@@ -29,13 +30,19 @@ interface SectionItem {
   js: string;
 }
 
-const DraggableSection = ({ id, type, index, moveSectionItem }) => {
+const DraggableSection = ({ id, type, index, moveSectionItem, removeSection }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'section',
-    item: { id, index },
+    item: { id, index, type: 'section' },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
+    end: (item, monitor) => {
+      const dropResult = monitor.getDropResult()
+      if (!dropResult) {
+        removeSection(item.id)
+      }
+    },
   }));
 
   const [, drop] = useDrop(() => ({
@@ -55,7 +62,7 @@ const DraggableSection = ({ id, type, index, moveSectionItem }) => {
   );
 };
 
-const AvailableSection = ({ type, addSection }) => {
+const AvailableSection = ({ type, addSection, isUsed }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'availableSection',
     item: { type },
@@ -63,6 +70,8 @@ const AvailableSection = ({ type, addSection }) => {
       isDragging: monitor.isDragging(),
     }),
   }));
+
+  if (isUsed) return null;
 
   return (
     <div
@@ -92,6 +101,10 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
       js: '',
     };
     setSections(prevSections => [...prevSections, newSection]);
+  };
+
+  const removeSection = (id: string) => {
+    setSections(prevSections => prevSections.filter(section => section.id !== id));
   };
 
   const moveSectionItem = (dragIndex: number, hoverIndex: number) => {
@@ -149,29 +162,22 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
           },
           body: JSON.stringify({
             name: templateName,
-            description: '', // Add a description field to your form if needed
-            sections: sections.map(section => ({
-              type: section.type,
-              html: section.html,
-              css: section.css,
-              js: section.js,
-            })),
+            sections,
             globalCss,
             globalJs,
           }),
         });
-  
+
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create template');
+          throw new Error('Failed to create template');
         }
-  
+
         const data = await response.json();
         console.log('Template created:', data);
         onClose();
       } catch (error) {
         console.error('Error creating template:', error);
-        setError(error.message || 'Failed to create template. Please try again.');
+        setError('Failed to create template. Please try again.');
       }
     }
   };
@@ -197,8 +203,13 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
             <div className="flex">
               <div className="w-1/2 pr-2">
                 <h3 className="text-lg mb-2 text-[var(--accent-color)]">Available Sections</h3>
-                {sectionTypes.map((type) => (
-                  <AvailableSection key={type} type={type} addSection={addSection} />
+                {allSectionTypes.map((type) => (
+                  <AvailableSection 
+                    key={type} 
+                    type={type} 
+                    addSection={addSection} 
+                    isUsed={sections.some(section => section.type === type)}
+                  />
                 ))}
               </div>
               <div className="w-1/2 pl-2">
@@ -211,6 +222,7 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
                       type={section.type}
                       index={index}
                       moveSectionItem={moveSectionItem}
+                      removeSection={removeSection}
                     />
                   ))}
                   {sections.length === 0 && (

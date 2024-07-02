@@ -3,21 +3,21 @@
 import { useDrag } from 'react-dnd'
 import { useRef } from 'react'
 
-const options = [
-  'Hero', 'About Team', 'Featured Listings', 'Featured Neighborhoods',
-  'Our Stats', 'Latest Blogs', 'Buy a home CTA', 'Sell a home CTA',
-  'Home worth CTA', 'Contact information / form', 'Combined CTA'  // Added 'Combined CTA'
-];
-
-function DraggableOption({ name }: { name: string }) {
+function DraggableOption({ name, addToTemplate }: { name: string, addToTemplate: (item: string) => void }) {
   const ref = useRef<HTMLDivElement>(null)
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'option',
-    item: { name },
+    item: { name, type: 'option' },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-  }))
+    end: (item, monitor) => {
+      const dropResult = monitor.getDropResult()
+      if (item && dropResult) {
+        addToTemplate(item.name)
+      }
+    },
+  }), [name, addToTemplate])
 
   drag(ref)
 
@@ -33,13 +33,17 @@ function DraggableOption({ name }: { name: string }) {
   )
 }
 
-export default function Sidebar() {
+export default function Sidebar({ availableOptions, addToTemplate }: { availableOptions: string[], addToTemplate: (item: string) => void }) {
   return (
     <div className="luxury-panel w-80 p-6 mr-8">
       <h2 className="text-2xl font-bold mb-6 text-center text-[var(--accent-color)]">Options</h2>
       <div className="space-y-4">
-        {options.map((option) => (
-          <DraggableOption key={option} name={option} />
+        {availableOptions.map((option) => (
+          <DraggableOption 
+            key={option} 
+            name={option} 
+            addToTemplate={addToTemplate}
+          />
         ))}
       </div>
     </div>
