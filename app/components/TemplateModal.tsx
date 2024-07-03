@@ -6,6 +6,7 @@ import { Dialog } from '@headlessui/react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { X } from 'lucide-react';
+import ParseTemplateModal from './ParseTemplateModal';
 
 type ModalMode = 'add' | 'edit';
 
@@ -16,12 +17,6 @@ interface TemplateModalProps {
   templateId?: string;
 }
 
-const allSectionTypes = [
-  'Hero', 'About Team', 'Featured Listings', 'Featured Neighborhoods',
-  'Our Stats', 'Latest Blogs', 'Buy a home CTA', 'Sell a home CTA',
-  'Home worth CTA', 'Contact information / form', 'Combined CTA'
-];
-
 interface SectionItem {
   id: string;
   type: string;
@@ -29,6 +24,13 @@ interface SectionItem {
   css: string;
   js: string;
 }
+
+const allSectionTypes = [
+  'Hero', 'About Team', 'Featured Listings', 'Featured Neighborhoods',
+  'Our Stats', 'Latest Blogs', 'Buy a home CTA', 'Sell a home CTA',
+  'Home worth CTA', 'Contact information / form', 'Combined CTA',
+  'Social Feeds', 'Action Bar', 'Lifestyles'
+];
 
 const DraggableSection = ({ id, type, index, moveSectionItem, removeSection }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -84,6 +86,16 @@ const AvailableSection = ({ type, addSection, isUsed }) => {
   );
 };
 
+function parseCSS(css: string): { selector: string; style: string }[] {
+  return css.split('}')
+    .map(rule => rule.split('{'))
+    .filter(rule => rule.length === 2)
+    .map(([selector, style]) => ({
+      selector: selector.trim(),
+      style: style.trim()
+    }));
+}
+
 export default function TemplateModal({ isOpen, onClose, mode, templateId }: TemplateModalProps) {
   const [step, setStep] = useState(0);
   const [templateName, setTemplateName] = useState('');
@@ -91,6 +103,12 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
   const [globalCss, setGlobalCss] = useState('');
   const [globalJs, setGlobalJs] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isParseModalOpen, setIsParseModalOpen] = useState(false);
+
+  // New state for parsing method
+  const [htmlInput, setHtmlInput] = useState('');
+  const [cssInput, setCssInput] = useState('');
+  const [jsInput, setJsInput] = useState('');
 
   const addSection = (type: string) => {
     const newSection = {
@@ -116,6 +134,58 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
     });
   };
 
+  const handleParseTemplate = (parsedSections: SectionItem[], name: string, css: string, js: string) => {
+    setTemplateName(name);
+    setSections(parsedSections.map(section => ({
+      ...section,
+      type: '', // You may want to add a way for users to select the section type
+    })));
+    setGlobalCss(css);
+    setGlobalJs(js);
+    setStep(2); // Move to section details step
+    setIsParseModalOpen(false);
+  };
+
+  const parseTemplate = () => {
+    const root = parse(htmlInput);
+    const body = root.querySelector('body');
+    
+    if (!body) {
+      setError('Invalid HTML structure. Make sure there is a <body> tag.');
+      return;
+    }
+
+    const newSections: SectionItem[] = [];
+    body.childNodes.forEach((node: any) => {
+      if (node.nodeType === 1) { // Element node
+        newSections.push({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          type: '',
+          html: node.outerHTML,
+          css: '',
+          js: ''
+        });
+      }
+    });
+
+    // Parse CSS
+    const parsedCss = parseCSS(cssInput);
+
+    // Match CSS rules to sections
+    newSections.forEach((section) => {
+      const sectionRoot = parse(section.html);
+      section.css = parsedCss
+        .filter(rule => sectionRoot.querySelector(rule.selector))
+        .map(rule => `${rule.selector} { ${rule.style} }`)
+        .join('\n');
+    });
+
+    setSections(newSections);
+    setGlobalCss(cssInput);
+    setGlobalJs(jsInput);
+    setStep(2); // Move to section details step
+  };
+
   const validateStep = async () => {
     setError(null);
     switch (step) {
@@ -139,7 +209,10 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
         }
         break;
       case 2:
-        // You can add more specific validations here if needed
+        if (sections.some(section => !section.type)) {
+          setError("All sections must have a type assigned.");
+          return false;
+        }
         break;
     }
     return true;
@@ -194,7 +267,10 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
               placeholder="Template Name"
               className="w-full p-2 mb-4 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
             />
-            <button onClick={handleNextStep} className="luxury-button">Next</button>
+            <div className="flex justify-between">
+              <button onClick={handleNextStep} className="luxury-button">Next</button>
+              <button onClick={() => setIsParseModalOpen(true)} className="luxury-button">Parse Template</button>
+            </div>
           </div>
         );
       case 1:
@@ -214,7 +290,7 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
               </div>
               <div className="w-1/2 pl-2">
                 <h3 className="text-lg mb-2 text-[var(--accent-color)]">Template Sections</h3>
-                <div className="min-h-[200px] p-2 luxury-panel" ref={drop}>
+                <div className="min-h-[200px] p-2 luxury-panel">
                   {sections.map((section, index) => (
                     <DraggableSection
                       key={section.id}
@@ -240,7 +316,21 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
             <h3 className="text-lg mb-2 text-[var(--accent-color)]">Section Details</h3>
             {sections.map((section, index) => (
               <div key={section.id} className="mb-4 p-4 luxury-panel">
-                <h4 className="text-md mb-2 text-[var(--accent-color)]">{section.type}</h4>
+                <h4 className="text-md mb-2 text-[var(--accent-color)]">Section {index + 1}</h4>
+                <select
+                  value={section.type}
+                  onChange={(e) => {
+                    const newSections = [...sections];
+                    newSections[index].type = e.target.value;
+                    setSections(newSections);
+                  }}
+                  className="w-full p-2 mb-2 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+                >
+                  <option value="">Select section type</option>
+                  {allSectionTypes.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
                 <textarea
                   value={section.html}
                   onChange={(e) => {
@@ -248,7 +338,6 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
                     newSections[index].html = e.target.value;
                     setSections(newSections);
                   }}
-                  placeholder="HTML"
                   className="w-full p-2 mb-2 h-24 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
                 />
                 <textarea
@@ -258,7 +347,6 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
                     newSections[index].css = e.target.value;
                     setSections(newSections);
                   }}
-                  placeholder="CSS"
                   className="w-full p-2 mb-2 h-24 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
                 />
                 <textarea
@@ -268,7 +356,6 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
                     newSections[index].js = e.target.value;
                     setSections(newSections);
                   }}
-                  placeholder="JavaScript"
                   className="w-full p-2 mb-2 h-24 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
                 />
               </div>
@@ -304,19 +391,34 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
   }));
 
   return (
-    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-black/70" aria-hidden="true" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="luxury-panel w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
-          <Dialog.Title className="text-2xl font-bold mb-6 text-[var(--accent-color)]">
-            {mode === 'add' ? 'Add New Template' : 'Edit Template'}
-          </Dialog.Title>
-          
-          {error && <p className="text-red-500 mb-4">{error}</p>}
-          
-          {renderStep()}
-        </Dialog.Panel>
-      </div>
-    </Dialog>
+    <>
+      <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+        <div className="fixed inset-0 bg-black/70" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="luxury-panel w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+            <Dialog.Title className="text-2xl font-bold mb-6 text-[var(--accent-color)]">
+              {mode === 'add' ? 'Add New Template' : 'Edit Template'}
+            </Dialog.Title>
+            
+            {error && <p className="text-red-500 mb-4">{error}</p>}
+            
+            {renderStep()}
+
+            <button
+              onClick={onClose}
+              className="absolute top-2 right-2 p-1 rounded-full hover:bg-[var(--secondary-color)]"
+            >
+              <X size={24} className="text-[var(--accent-color)]" />
+            </button>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
+
+      <ParseTemplateModal
+        isOpen={isParseModalOpen}
+        onClose={() => setIsParseModalOpen(false)}
+        onParse={handleParseTemplate}
+      />
+    </>
   );
 }

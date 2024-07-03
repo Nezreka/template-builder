@@ -10,7 +10,8 @@ import TemplateModal from './components/TemplateModal'
 const allOptions = [
   'Hero', 'About Team', 'Featured Listings', 'Featured Neighborhoods',
   'Our Stats', 'Latest Blogs', 'Buy a home CTA', 'Sell a home CTA',
-  'Home worth CTA', 'Contact information / form', 'Combined CTA'
+  'Home worth CTA', 'Contact information / form', 'Combined CTA',
+  'Social Feeds', 'Action Bar', 'Lifestyles', 'Latest Listings'
 ];
 
 export default function Home() {
