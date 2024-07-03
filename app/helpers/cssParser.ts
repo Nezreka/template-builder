@@ -141,7 +141,7 @@ function parseCSS(css: string): CSSRule[] {
     // Remove 'body.home' prefix if present
     const cleanSelector = selector.replace(/^body\.home\s+/, '');
     const parts = cleanSelector.split(/\s+/);
-    
+  
     // Check if all parts of the selector match
     return parts.every((part, index) => {
       const simplePart = part.replace(/:[a-zA-Z-]+/g, '').replace(/\[.*?\]/g, '');
@@ -156,16 +156,19 @@ function parseCSS(css: string): CSSRule[] {
   }
 
   function extractMediaQuerySelectors(rule: string): string[] {
-    const selectorRegex = /([^{}]+)\s*\{([^{}]+)\}/g;
+    const selectorRegex = /([^{},]+)(?={)/g;  // Match multiple comma-separated selectors
     const selectors: string[] = [];
     let match;
+  
     while ((match = selectorRegex.exec(rule)) !== null) {
-      const selector = match[1].trim();
-      // Remove 'body.home' prefix if present
-      const cleanSelector = selector.replace(/^body\.home\s+/, '');
-      selectors.push(cleanSelector);
+      const extractedSelectors = match[1].split(',');
+  
+      for (const selector of extractedSelectors) {
+        const cleanSelector = selector.trim().replace(/^body\.home\s+/, '');
+        selectors.push(cleanSelector);
+      }
     }
-    console.log('Extracted media query selectors:', selectors);
+    
     return selectors;
   }
   
