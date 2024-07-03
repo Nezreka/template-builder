@@ -10,11 +10,14 @@ export async function GET(req: Request) {
   }
 
   try {
-    const existingTemplate = await prisma.template.findFirst({
-      where: { name: name },
-    });
+    const result = await prisma.$queryRaw`
+      SELECT * FROM Template
+      WHERE LOWER(name) = LOWER(${name})
+    `;
 
-    return NextResponse.json({ exists: !!existingTemplate });
+    const exists = result.length > 0;
+
+    return NextResponse.json({ exists });
   } catch (error) {
     console.error('Failed to check template name:', error);
     return NextResponse.json({ error: 'Failed to check template name' }, { status: 500 });

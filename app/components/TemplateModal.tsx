@@ -1,11 +1,11 @@
 // app/components/TemplateModal.tsx
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog } from '@headlessui/react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import ParseTemplateModal from './ParseTemplateModal';
 
 type ModalMode = 'add' | 'edit';
@@ -29,37 +29,62 @@ const allSectionTypes = [
   'Hero', 'About Team', 'Featured Listings', 'Featured Neighborhoods',
   'Our Stats', 'Latest Blogs', 'Buy a home CTA', 'Sell a home CTA',
   'Home worth CTA', 'Contact information / form', 'Combined CTA',
-  'Social Feeds', 'Action Bar', 'Lifestyles'
+  'Social Feeds', 'Action Bar', 'Lifestyles', 'Latest Listings'
 ];
 
 const DraggableSection = ({ id, type, index, moveSectionItem, removeSection }) => {
+  const ref = useRef(null);
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'section',
     item: { id, index, type: 'section' },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-    end: (item, monitor) => {
-      const dropResult = monitor.getDropResult()
-      if (!dropResult) {
-        removeSection(item.id)
-      }
-    },
   }));
 
   const [, drop] = useDrop(() => ({
     accept: 'section',
-    hover(item: { id: string; index: number }) {
-      if (item.index !== index) {
-        moveSectionItem(item.index, index);
-        item.index = index;
+    hover(item: { id: string; index: number }, monitor) {
+      if (!ref.current) {
+        return;
       }
+      const dragIndex = item.index;
+      const hoverIndex = index;
+
+      if (dragIndex === hoverIndex) {
+        return;
+      }
+
+      const hoverBoundingRect = ref.current?.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
+        return;
+      }
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
+        return;
+      }
+
+      moveSectionItem(dragIndex, hoverIndex);
+      item.index = hoverIndex;
     },
   }));
 
+  drag(drop(ref));
+
   return (
-    <div ref={(node) => drag(drop(node))} className={`p-2 mb-2 luxury-panel cursor-move ${isDragging ? 'opacity-50' : ''}`}>
-      {type}
+    <div ref={ref} className={`p-2 mb-2 luxury-panel cursor-move ${isDragging ? 'opacity-50' : ''}`}>
+      <div className="flex justify-between items-center">
+        <span>{type}</span>
+        <button
+          onClick={() => removeSection(id)}
+          className="p-1 rounded-full hover:bg-[var(--secondary-color)]"
+        >
+          <Trash2 size={16} className="text-[var(--accent-color)]" />
+        </button>
+      </div>
     </div>
   );
 };
@@ -79,22 +104,11 @@ const AvailableSection = ({ type, addSection, isUsed }) => {
     <div
       ref={drag}
       className={`p-2 mb-2 luxury-panel cursor-move ${isDragging ? 'opacity-50' : ''}`}
-      onClick={() => addSection(type)}
     >
       {type}
     </div>
   );
 };
-
-function parseCSS(css: string): { selector: string; style: string }[] {
-  return css.split('}')
-    .map(rule => rule.split('{'))
-    .filter(rule => rule.length === 2)
-    .map(([selector, style]) => ({
-      selector: selector.trim(),
-      style: style.trim()
-    }));
-}
 
 export default function TemplateModal({ isOpen, onClose, mode, templateId }: TemplateModalProps) {
   const [step, setStep] = useState(0);
@@ -105,12 +119,7 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
   const [error, setError] = useState<string | null>(null);
   const [isParseModalOpen, setIsParseModalOpen] = useState(false);
 
-  // New state for parsing method
-  const [htmlInput, setHtmlInput] = useState('');
-  const [cssInput, setCssInput] = useState('');
-  const [jsInput, setJsInput] = useState('');
-
-  const addSection = (type: string) => {
+  const addSection = useCallback((type: string) => {
     const newSection = {
       id: Date.now().toString(),
       type,
@@ -119,71 +128,26 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
       js: '',
     };
     setSections(prevSections => [...prevSections, newSection]);
-  };
+  }, []);
 
-  const removeSection = (id: string) => {
+  const removeSection = useCallback((id: string) => {
     setSections(prevSections => prevSections.filter(section => section.id !== id));
-  };
+  }, []);
 
-  const moveSectionItem = (dragIndex: number, hoverIndex: number) => {
+  const moveSectionItem = useCallback((dragIndex: number, hoverIndex: number) => {
     setSections((prevSections) => {
       const newSections = [...prevSections];
       const [reorderedItem] = newSections.splice(dragIndex, 1);
       newSections.splice(hoverIndex, 0, reorderedItem);
       return newSections;
     });
-  };
+  }, []);
 
-  const handleParseTemplate = (parsedSections: SectionItem[], name: string, css: string, js: string) => {
+  const handleParseTemplate = (parsedSections: SectionItem[], name: string) => {
     setTemplateName(name);
-    setSections(parsedSections.map(section => ({
-      ...section,
-      type: '', // You may want to add a way for users to select the section type
-    })));
-    setGlobalCss(css);
-    setGlobalJs(js);
+    setSections(parsedSections);
     setStep(2); // Move to section details step
     setIsParseModalOpen(false);
-  };
-
-  const parseTemplate = () => {
-    const root = parse(htmlInput);
-    const body = root.querySelector('body');
-    
-    if (!body) {
-      setError('Invalid HTML structure. Make sure there is a <body> tag.');
-      return;
-    }
-
-    const newSections: SectionItem[] = [];
-    body.childNodes.forEach((node: any) => {
-      if (node.nodeType === 1) { // Element node
-        newSections.push({
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          type: '',
-          html: node.outerHTML,
-          css: '',
-          js: ''
-        });
-      }
-    });
-
-    // Parse CSS
-    const parsedCss = parseCSS(cssInput);
-
-    // Match CSS rules to sections
-    newSections.forEach((section) => {
-      const sectionRoot = parse(section.html);
-      section.css = parsedCss
-        .filter(rule => sectionRoot.querySelector(rule.selector))
-        .map(rule => `${rule.selector} { ${rule.style} }`)
-        .join('\n');
-    });
-
-    setSections(newSections);
-    setGlobalCss(cssInput);
-    setGlobalJs(jsInput);
-    setStep(2); // Move to section details step
   };
 
   const validateStep = async () => {
@@ -255,6 +219,8 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
     }
   };
 
+  
+
   const renderStep = () => {
     switch (step) {
       case 0:
@@ -290,7 +256,10 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
               </div>
               <div className="w-1/2 pl-2">
                 <h3 className="text-lg mb-2 text-[var(--accent-color)]">Template Sections</h3>
-                <div className="min-h-[200px] p-2 luxury-panel">
+                <div 
+                  className="min-h-[200px] p-2 luxury-panel"
+                  ref={drop}
+                >
                   {sections.map((section, index) => (
                     <DraggableSection
                       key={section.id}
@@ -386,9 +355,17 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
   };
 
   const [, drop] = useDrop(() => ({
-    accept: 'availableSection',
-    drop: (item: { type: string }) => addSection(item.type),
-  }));
+    accept: ['availableSection', 'section'],
+    drop: (item: { type: string; id?: string }, monitor) => {
+      if (!monitor.didDrop()) {
+        if (item.type === 'section') {
+          removeSection(item.id);
+        } else {
+          addSection(item.type);
+        }
+      }
+    },
+  }), [addSection, removeSection]);
 
   return (
     <>
