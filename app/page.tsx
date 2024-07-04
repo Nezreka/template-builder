@@ -1,8 +1,8 @@
 'use client'
 
+import { useState, useCallback } from 'react'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
-import { useState, useCallback } from 'react'
 import Sidebar from './components/Sidebar'
 import BuildArea from './components/BuildArea'
 import TemplateModal from './components/TemplateModal'
@@ -19,7 +19,6 @@ export default function Home() {
   const [availableOptions, setAvailableOptions] = useState<string[]>(allOptions)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>()
 
   const addToTemplate = useCallback((item: string) => {
     setTemplate(prevTemplate => {
@@ -60,25 +59,29 @@ export default function Home() {
 
   const openAddModal = useCallback(() => {
     setModalMode('add')
-    setSelectedTemplateId(undefined)
     setIsModalOpen(true)
   }, [])
 
-  const openEditModal = useCallback((templateId: string) => {
+  const openEditModal = useCallback(() => {
     setModalMode('edit')
-    setSelectedTemplateId(templateId)
     setIsModalOpen(true)
   }, [])
 
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex flex-col h-screen bg-[var(--bg-color)] text-[var(--text-color)] p-8">
-        <div className="mb-4">
+        <div className="mb-4 flex">
           <button 
             onClick={openAddModal}
-            className="luxury-button"
+            className="luxury-button mr-2"
           >
             Add New Template
+          </button>
+          <button 
+            onClick={openEditModal}
+            className="luxury-button"
+          >
+            Edit Template
           </button>
         </div>
         <div className="flex flex-1 overflow-hidden">
@@ -98,7 +101,6 @@ export default function Home() {
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           mode={modalMode}
-          templateId={selectedTemplateId}
         />
       </div>
     </DndProvider>

@@ -5,8 +5,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog } from '@headlessui/react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, ArrowLeftRight, ChevronUp, ChevronDown } from 'lucide-react';
 import ParseTemplateModal from './ParseTemplateModal';
+import ReactMarkdown from 'react-markdown';
 
 type ModalMode = 'add' | 'edit';
 
@@ -32,11 +33,11 @@ const allSectionTypes = [
   'Social Feeds', 'Action Bar', 'Lifestyles', 'Latest Listings'
 ];
 
-const DraggableSection = ({ id, type, index, moveSectionItem, removeSection }) => {
+const DraggableSection = ({ id, type, index, moveSectionItem, removeSection, sectionsLength }) => {
   const ref = useRef(null);
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'section',
-    item: { id, index, type: 'section' },
+    item: { id, index, type },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -74,16 +75,48 @@ const DraggableSection = ({ id, type, index, moveSectionItem, removeSection }) =
 
   drag(drop(ref));
 
+  const moveUp = () => {
+    if (index > 0) {
+      moveSectionItem(index, index - 1);
+    }
+  };
+
+  const moveDown = () => {
+    if (index < sectionsLength - 1) {
+      moveSectionItem(index, index + 1);
+    }
+  };
+
   return (
-    <div ref={ref} className={`p-2 mb-2 luxury-panel cursor-move ${isDragging ? 'opacity-50' : ''}`}>
+    <div 
+      ref={ref} 
+      className={`p-2 mb-2 luxury-panel cursor-move ${isDragging ? 'opacity-50' : ''} hover:bg-[var(--secondary-color)] transition-colors`}
+    >
       <div className="flex justify-between items-center">
         <span>{type}</span>
-        <button
-          onClick={() => removeSection(id)}
-          className="p-1 rounded-full hover:bg-[var(--secondary-color)]"
-        >
-          <Trash2 size={16} className="text-[var(--accent-color)]" />
-        </button>
+        <div className="flex items-center">
+          <button
+            onClick={moveUp}
+            disabled={index === 0}
+            className={`p-1 rounded-full ${index === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[var(--accent-color)] hover:text-[var(--bg-color)]'}`}
+          >
+            <ChevronUp size={16} />
+          </button>
+          <button
+            onClick={moveDown}
+            disabled={index === sectionsLength - 1}
+            className={`p-1 rounded-full ${index === sectionsLength - 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[var(--accent-color)] hover:text-[var(--bg-color)]'}`}
+          >
+            <ChevronDown size={16} />
+          </button>
+          <ArrowLeftRight size={16} className="mx-2 text-[var(--accent-color)]" />
+          <button
+            onClick={() => removeSection(id)}
+            className="p-1 rounded-full hover:bg-[var(--accent-color)] hover:text-[var(--bg-color)]"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -103,11 +136,23 @@ const AvailableSection = ({ type, addSection, isUsed }) => {
   return (
     <div
       ref={drag}
-      className={`p-2 mb-2 luxury-panel cursor-move ${isDragging ? 'opacity-50' : ''}`}
+      className={`p-2 mb-2 luxury-panel cursor-move ${isDragging ? 'opacity-50' : ''} hover:bg-[var(--secondary-color)] transition-colors`}
     >
       {type}
     </div>
   );
+};
+
+const SafeMarkdown = ({ children }) => {
+  if (!children || typeof children !== 'string' || children.trim() === '') {
+    return <p className="italic text-gray-500">No content</p>;
+  }
+  try {
+    return <ReactMarkdown>{children}</ReactMarkdown>;
+  } catch (error) {
+    console.error('Error rendering markdown:', error);
+    return <p className="italic text-red-500">Error rendering content</p>;
+  }
 };
 
 export default function TemplateModal({ isOpen, onClose, mode, templateId }: TemplateModalProps) {
@@ -118,6 +163,8 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
   const [globalJs, setGlobalJs] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isParseModalOpen, setIsParseModalOpen] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
 
   const addSection = useCallback((type: string) => {
     const newSection = {
@@ -158,8 +205,8 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
           setError("Template name is required.");
           return false;
         }
-        // Check if template name already exists
-        const response = await fetch(`/api/templates/check-name?name=${encodeURIComponent(templateName)}`);
+        // Check if template name already exists (case-insensitive)
+        const response = await fetch(`/api/templates/check-name?name=${encodeURIComponent(templateName.trim().toLowerCase())}`);
         const { exists } = await response.json();
         if (exists) {
           setError("A template with this name already exists.");
@@ -188,12 +235,98 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
     }
   };
 
+  useEffect(() => {
+    if (mode === 'edit' && isOpen) {
+      fetchTemplates();
+    } else {
+      // Reset state for new template
+      setTemplateName('');
+      setSections([]);
+      setGlobalCss('');
+      setGlobalJs('');
+      setStep(0);
+    }
+  }, [mode, isOpen]);
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await fetch('/api/templates');
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(data);
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  const fetchTemplate = async (id: string) => {
+    try {
+      const response = await fetch(`/api/templates/${id}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch template');
+      }
+      const data = await response.json();
+      setTemplateName(data.name);
+      setSections(data.sections);
+      setGlobalCss(data.globalCss);
+      setGlobalJs(data.globalJs);
+      setStep(1); // Skip the naming step for editing
+    } catch (error) {
+      console.error('Error fetching template:', error);
+      setError('Failed to fetch template. Please try again.');
+    }
+  };
+
+  const handleTemplateSelect = async (template) => {
+    setSelectedTemplate(template);
+    try {
+      const response = await fetch(`/api/templates/${template.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fetched template data:', data);
+        setTemplateName(data.name);
+        if (Array.isArray(data.sections)) {
+          setSections(data.sections.map(section => ({
+            id: section.id,
+            type: section.type || section.section?.name,
+            html: section.htmlContent || section.html || '',
+            css: section.css?.[0]?.cssFile?.content || section.css || '',
+            js: section.js?.[0]?.jsFile?.content || section.js || '',
+          })));
+        } else {
+          console.error('Sections data is not an array:', data.sections);
+          setSections([]);
+        }
+        setGlobalCss(data.globalCss?.[0]?.cssFile?.content || data.globalCss || '');
+        setGlobalJs(data.globalJs?.[0]?.jsFile?.content || data.globalJs || '');
+        console.log('Processed sections:', sections);
+      } else {
+        throw new Error('Failed to fetch template details');
+      }
+    } catch (error) {
+      console.error('Error fetching template details:', error);
+      setError('Failed to fetch template details. Please try again.');
+    }
+  };
+
+  const handleSectionChange = (index, field, value) => {
+    const updatedSections = [...sections];
+    updatedSections[index][field] = value;
+    setSections(updatedSections);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (await validateStep()) {
       try {
-        const response = await fetch('/api/templates', {
-          method: 'POST',
+        const url = mode === 'edit' && selectedTemplate 
+          ? `/api/templates/${selectedTemplate.id}` 
+          : '/api/templates';
+        const method = mode === 'edit' ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method: method,
           headers: {
             'Content-Type': 'application/json',
           },
@@ -204,61 +337,149 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
             globalJs,
           }),
         });
-
+  
         if (!response.ok) {
-          throw new Error('Failed to create template');
+          throw new Error(`Failed to ${mode} template`);
         }
-
+  
         const data = await response.json();
-        console.log('Template created:', data);
+        console.log(`Template ${mode}d:`, data);
         onClose();
       } catch (error) {
-        console.error('Error creating template:', error);
-        setError('Failed to create template. Please try again.');
+        console.error(`Error ${mode}ing template:`, error);
+        setError(`Failed to ${mode} template. Please try again.`);
       }
     }
   };
+
+  const handleSave = async () => {
+    try {
+      const response = await fetch(`/api/templates/${selectedTemplate.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: templateName,
+          sections,
+          globalCss,
+          globalJs,
+        }),
+      });
+
+      if (response.ok) {
+        onClose();
+      } else {
+        throw new Error('Failed to update template');
+      }
+    } catch (error) {
+      console.error('Error updating template:', error);
+      setError('Failed to update template. Please try again.');
+    }
+  };
+
+  
 
   
 
   const renderStep = () => {
     switch (step) {
       case 0:
-        return (
-          <div>
-            <input
-              type="text"
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
-              placeholder="Template Name"
-              className="w-full p-2 mb-4 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-            />
-            <div className="flex justify-between">
-              <button onClick={handleNextStep} className="luxury-button">Next</button>
-              <button onClick={() => setIsParseModalOpen(true)} className="luxury-button">Parse Template</button>
+        if (mode === 'edit' && !selectedTemplate) {
+          return (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Select a template to edit:</h3>
+              {templates.map(template => (
+                <button
+                  key={template.id}
+                  onClick={() => handleTemplateSelect(template)}
+                  className="block w-full text-left p-2 hover:bg-[var(--secondary-color)] mb-2"
+                >
+                  {template.name}
+                </button>
+              ))}
             </div>
-          </div>
-        );
+          );
+        } else if (mode === 'edit' && selectedTemplate) {
+          console.log('Rendering edit mode, sections:', sections);
+          return (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Editing: {selectedTemplate.name}</h3>
+              {sections.length === 0 ? (
+                <p>No sections found</p>
+              ) : (
+                sections.map((section, index) => (
+                  <div key={section.id} className="mb-4 p-4 luxury-panel">
+                    <h4 className="font-semibold mb-2">Section: {section.type || 'Unknown'}</h4>
+                    {['html', 'css', 'js'].map(field => (
+                      <div key={field} className="mb-2">
+                        <h5 className="font-semibold capitalize">{field}:</h5>
+                        <textarea
+                          value={section[field] || ''}
+                          onChange={(e) => handleSectionChange(index, field, e.target.value)}
+                          className="w-full h-32 p-2 border rounded bg-[var(--secondary-color)] text-[var(--text-color)]"
+                        />
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => removeSection(section.id)}
+                      className="mt-2 p-2 bg-red-500 text-white rounded flex items-center"
+                    >
+                      <Trash2 size={16} className="mr-2" /> Delete Section
+                    </button>
+                  </div>
+                ))
+              )}
+              <button
+                onClick={handleSave}
+                className="mt-4 p-2 bg-[var(--accent-color)] text-[var(--bg-color)] rounded"
+              >
+                Save Changes
+              </button>
+            </div>
+          );
+        } else  {
+          return (
+            <div>
+              <input
+                type="text"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="Template Name"
+                className="w-full p-2 mb-4 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+              />
+              <div className="flex justify-between">
+                <button onClick={handleNextStep} className="luxury-button">Next</button>
+                <button onClick={() => setIsParseModalOpen(true)} className="luxury-button">Parse Template</button>
+              </div>
+            </div>
+          );
+        }
       case 1:
         return (
           <DndProvider backend={HTML5Backend}>
-            <div className="flex">
-              <div className="w-1/2 pr-2">
+            <div className="flex space-x-4">
+              <div className="w-1/2">
                 <h3 className="text-lg mb-2 text-[var(--accent-color)]">Available Sections</h3>
-                {allSectionTypes.map((type) => (
-                  <AvailableSection 
-                    key={type} 
-                    type={type} 
-                    addSection={addSection} 
-                    isUsed={sections.some(section => section.type === type)}
-                  />
-                ))}
+                <div 
+                  className="min-h-[400px] p-2 luxury-panel"
+                  ref={availableDrop}
+                >
+                  {allSectionTypes.map((type) => (
+                    <AvailableSection 
+                      key={type} 
+                      type={type} 
+                      addSection={addSection} 
+                      isUsed={sections.some(section => section.type === type)}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="w-1/2 pl-2">
+              <div className="w-1/2">
                 <h3 className="text-lg mb-2 text-[var(--accent-color)]">Template Sections</h3>
                 <div 
-                  className="min-h-[200px] p-2 luxury-panel"
-                  ref={drop}
+                  className="min-h-[400px] p-2 luxury-panel"
+                  ref={templateDrop}
                 >
                   {sections.map((section, index) => (
                     <DraggableSection
@@ -268,6 +489,7 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
                       index={index}
                       moveSectionItem={moveSectionItem}
                       removeSection={removeSection}
+                      sectionsLength={sections.length}
                     />
                   ))}
                   {sections.length === 0 && (
@@ -300,33 +522,27 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
-                <textarea
-                  value={section.html}
-                  onChange={(e) => {
-                    const newSections = [...sections];
-                    newSections[index].html = e.target.value;
-                    setSections(newSections);
-                  }}
-                  className="w-full p-2 mb-2 h-24 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-                />
-                <textarea
-                  value={section.css}
-                  onChange={(e) => {
-                    const newSections = [...sections];
-                    newSections[index].css = e.target.value;
-                    setSections(newSections);
-                  }}
-                  className="w-full p-2 mb-2 h-24 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-                />
-                <textarea
-                  value={section.js}
-                  onChange={(e) => {
-                    const newSections = [...sections];
-                    newSections[index].js = e.target.value;
-                    setSections(newSections);
-                  }}
-                  className="w-full p-2 mb-2 h-24 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-                />
+                {['html', 'css', 'js'].map(field => (
+                  <div key={field} className="mb-2">
+                    <h5 className="font-semibold capitalize">{field}:</h5>
+                    <ReactMarkdown>{section[field]}</ReactMarkdown>
+                    <textarea
+                      value={section[field]}
+                      onChange={(e) => {
+                        const newSections = [...sections];
+                        newSections[index][field] = e.target.value;
+                        setSections(newSections);
+                      }}
+                      className="w-full p-2 mb-2 h-24 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+                    />
+                  </div>
+                ))}
+                <button
+                  onClick={() => removeSection(section.id)}
+                  className="mt-2 p-2 bg-red-500 text-white rounded flex items-center"
+                >
+                  <Trash2 size={16} className="mr-2" /> Delete Section
+                </button>
               </div>
             ))}
             <button onClick={handleNextStep} className="luxury-button">Next</button>
@@ -348,24 +564,35 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
               placeholder="Global JavaScript"
               className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
             />
-            <button onClick={handleSubmit} className="luxury-button">Create Template</button>
+            <button onClick={handleSubmit} className="luxury-button">
+              {mode === 'add' ? 'Create Template' : 'Update Template'}
+            </button>
           </div>
         );
+      default:
+        return null;
     }
   };
 
-  const [, drop] = useDrop(() => ({
+  const [, availableDrop] = useDrop(() => ({
+    accept: 'section',
+    drop: (item: { type: string; id: string }) => {
+      removeSection(item.id);
+    },
+  }), [removeSection]);
+
+  const [, templateDrop] = useDrop(() => ({
     accept: ['availableSection', 'section'],
     drop: (item: { type: string; id?: string }, monitor) => {
       if (!monitor.didDrop()) {
-        if (item.type === 'section') {
-          removeSection(item.id);
+        if (item.id) {
+          // It's already in the template, do nothing
         } else {
           addSection(item.type);
         }
       }
     },
-  }), [addSection, removeSection]);
+  }), [addSection]);
 
   return (
     <>

@@ -1,6 +1,29 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+export async function GET() {
+  try {
+    const templates = await prisma.template.findMany({
+      include: {
+        sections: {
+          include: {
+            section: true,
+            css: { include: { cssFile: true } },
+            js: { include: { jsFile: true } }
+          }
+        },
+        globalCss: { include: { cssFile: true } },
+        globalJs: { include: { jsFile: true } }
+      }
+    });
+
+    return NextResponse.json(templates);
+  } catch (error) {
+    console.error('Failed to fetch templates:', error);
+    return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { name, description, sections, globalCss, globalJs } = await req.json();
