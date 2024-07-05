@@ -1,6 +1,6 @@
 // app/api/templates/[id]/route.ts
-import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 
 export async function GET(
   request: Request,
@@ -14,22 +14,28 @@ export async function GET(
           include: {
             section: true,
             css: { include: { cssFile: true } },
-            js: { include: { jsFile: true } }
-          }
+            js: { include: { jsFile: true } },
+          },
         },
         globalCss: { include: { cssFile: true } },
-        globalJs: { include: { jsFile: true } }
-      }
+        globalJs: { include: { jsFile: true } },
+      },
     });
 
     if (!template) {
-      return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Template not found" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json(template);
   } catch (error) {
-    console.error('Failed to fetch template:', error);
-    return NextResponse.json({ error: 'Failed to fetch template' }, { status: 500 });
+    console.error("Failed to fetch template:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch template" },
+      { status: 500 }
+    );
   }
 }
 
@@ -43,15 +49,21 @@ export async function PUT(
     // Start a transaction
     const updatedTemplate = await prisma.$transaction(async (prisma) => {
       // First, delete existing relationships
-      await prisma.templateCssFile.deleteMany({ where: { templateId: params.id } });
-      await prisma.templateJsFile.deleteMany({ where: { templateId: params.id } });
+      await prisma.templateCssFile.deleteMany({
+        where: { templateId: params.id },
+      });
+      await prisma.templateJsFile.deleteMany({
+        where: { templateId: params.id },
+      });
       await prisma.sectionCssFile.deleteMany({
         where: { templateSection: { templateId: params.id } },
       });
       await prisma.sectionJsFile.deleteMany({
         where: { templateSection: { templateId: params.id } },
       });
-      await prisma.templateSection.deleteMany({ where: { templateId: params.id } });
+      await prisma.templateSection.deleteMany({
+        where: { templateId: params.id },
+      });
 
       // Now update the template with new data
       return await prisma.template.update({
@@ -59,63 +71,91 @@ export async function PUT(
         data: {
           name,
           sections: {
-            create: await Promise.all(sections.map(async (section: any, index: number) => {
-              let sectionEntity = await prisma.section.findFirst({
-                where: { name: section.type }
-              });
-
-              if (!sectionEntity) {
-                sectionEntity = await prisma.section.create({
-                  data: { name: section.type }
+            create: await Promise.all(
+              sections.map(async (section: any, index: number) => {
+                let sectionEntity = await prisma.section.findFirst({
+                  where: { name: section.type },
                 });
-              }
 
-              return {
-                order: index,
-                htmlContent: section.html,
-                section: { connect: { id: sectionEntity.id } },
-                css: {
-                  create: section.css ? [{
-                    cssFile: {
-                      create: {
-                        filename: `${section.type || `Section ${index + 1}`}_${index}.css`,
-                        content: Array.isArray(section.css) ? '' : section.css || '',
-                      },
-                    },
-                  }] : [],
-                },
-                js: {
-                  create: section.js ? [{
-                    jsFile: {
-                      create: {
-                        filename: `${section.type || `Section ${index + 1}`}_${index}.js`,
-                        content: Array.isArray(section.js) ? '' : section.js || '',
-                      },
-                    },
-                  }] : [],
-                },
-              };
-            })),
+                if (!sectionEntity) {
+                  sectionEntity = await prisma.section.create({
+                    data: { name: section.type },
+                  });
+                }
+
+                return {
+                  order: index,
+                  htmlContent: section.html,
+                  section: { connect: { id: sectionEntity.id } },
+                  css: {
+                    create: section.css
+                      ? [
+                          {
+                            cssFile: {
+                              create: {
+                                filename: `${
+                                  section.type || `Section ${index + 1}`
+                                }_${index}.css`,
+                                content: Array.isArray(section.css)
+                                  ? ""
+                                  : section.css || "",
+                              },
+                            },
+                          },
+                        ]
+                      : [],
+                  },
+                  js: {
+                    create: section.js
+                      ? [
+                          {
+                            jsFile: {
+                              create: {
+                                filename: `${
+                                  section.type || `Section ${index + 1}`
+                                }_${index}.js`,
+                                content: Array.isArray(section.js)
+                                  ? ""
+                                  : section.js || "",
+                              },
+                            },
+                          },
+                        ]
+                      : [],
+                  },
+                };
+              })
+            ),
           },
           globalCss: {
-            create: globalCss ? [{
-              cssFile: {
-                create: {
-                  filename: 'global.css',
-                  content: Array.isArray(globalCss) ? '' : globalCss || '',
-                },
-              },
-            }] : [],
+            create: globalCss
+              ? [
+                  {
+                    cssFile: {
+                      create: {
+                        filename: "global.css",
+                        content: Array.isArray(globalCss)
+                          ? ""
+                          : globalCss || "",
+                      },
+                    },
+                  },
+                ]
+              : [],
           },
           globalJs: {
-            create: globalJs ? [{
-              jsFile: {
-                create: {
-                  filename: 'global.js',
-                  content: Array.isArray(globalJs) ? '' : globalJs || '',
-                },
-              },
-            }] : [],
+            create: globalJs
+              ? [
+                  {
+                    jsFile: {
+                      create: {
+                        filename: "global.js",
+                        content: Array.isArray(globalJs) ? "" : globalJs || "",
+                      },
+                    },
+                  },
+                ]
+              : [],
           },
         },
         include: {
@@ -123,11 +163,11 @@ export async function PUT(
             include: {
               section: true,
               css: { include: { cssFile: true } },
-              js: { include: { jsFile: true } }
-            }
+              js: { include: { jsFile: true } },
+            },
           },
           globalCss: { include: { cssFile: true } },
-          globalJs: { include: { jsFile: true } }
+          globalJs: { include: { jsFile: true } },
         },
       });
     });
