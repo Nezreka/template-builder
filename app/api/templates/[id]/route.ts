@@ -40,92 +40,105 @@ export async function PUT(
   try {
     const { name, sections, globalCss, globalJs } = await request.json();
 
-    const updatedSections = await Promise.all(sections.map(async (section: any, index: number) => {
-      let sectionId = section.sectionId;
+    // Start a transaction
+    const updatedTemplate = await prisma.$transaction(async (prisma) => {
+      // First, delete existing relationships
+      await prisma.templateCssFile.deleteMany({ where: { templateId: params.id } });
+      await prisma.templateJsFile.deleteMany({ where: { templateId: params.id } });
+      await prisma.sectionCssFile.deleteMany({
+        where: { templateSection: { templateId: params.id } },
+      });
+      await prisma.sectionJsFile.deleteMany({
+        where: { templateSection: { templateId: params.id } },
+      });
+      await prisma.templateSection.deleteMany({ where: { templateId: params.id } });
 
-      if (!sectionId) {
-        // If sectionId is not provided, create a new section
-        const newSection = await prisma.section.create({
-          data: { name: section.type || `Section ${index + 1}` },
-        });
-        sectionId = newSection.id;
-      }
+      // Now update the template with new data
+      return await prisma.template.update({
+        where: { id: params.id },
+        data: {
+          name,
+          sections: {
+            create: await Promise.all(sections.map(async (section: any, index: number) => {
+              let sectionEntity = await prisma.section.findFirst({
+                where: { name: section.type }
+              });
 
-      return {
-        order: index,
-        htmlContent: section.html,
-        section: { connect: { id: sectionId } },
-        css: {
-          create: section.css && section.css.length > 0 ? [{
-            cssFile: {
-              create: {
-                filename: `${section.type || `Section ${index + 1}`}_${index}.css`,
-                content: typeof section.css === 'string' ? section.css : '',
-              },
-            },
-          }] : [],
-        },
-        js: {
-          create: section.js && section.js.length > 0 ? [{
-            jsFile: {
-              create: {
-                filename: `${section.type || `Section ${index + 1}`}_${index}.js`,
-                content: typeof section.js === 'string' ? section.js : '',
-              },
-            },
-          }] : [],
-        },
-      };
-    }));
+              if (!sectionEntity) {
+                sectionEntity = await prisma.section.create({
+                  data: { name: section.type }
+                });
+              }
 
-    const updatedTemplate = await prisma.template.update({
-      where: { id: params.id },
-      data: {
-        name,
-        sections: {
-          deleteMany: {},
-          create: updatedSections,
-        },
-        globalCss: {
-          deleteMany: {},
-          create: globalCss ? [{
-            cssFile: {
-              create: {
-                filename: 'global.css',
-                content: typeof globalCss === 'string' ? globalCss : '',
+              return {
+                order: index,
+                htmlContent: section.html,
+                section: { connect: { id: sectionEntity.id } },
+                css: {
+                  create: section.css ? [{
+                    cssFile: {
+                      create: {
+                        filename: `${section.type || `Section ${index + 1}`}_${index}.css`,
+                        content: Array.isArray(section.css) ? '' : section.css || '',
+                      },
+                    },
+                  }] : [],
+                },
+                js: {
+                  create: section.js ? [{
+                    jsFile: {
+                      create: {
+                        filename: `${section.type || `Section ${index + 1}`}_${index}.js`,
+                        content: Array.isArray(section.js) ? '' : section.js || '',
+                      },
+                    },
+                  }] : [],
+                },
+              };
+            })),
+          },
+          globalCss: {
+            create: globalCss ? [{
+              cssFile: {
+                create: {
+                  filename: 'global.css',
+                  content: Array.isArray(globalCss) ? '' : globalCss || '',
+                },
               },
-            },
-          }] : [],
-        },
-        globalJs: {
-          deleteMany: {},
-          create: globalJs ? [{
-            jsFile: {
-              create: {
-                filename: 'global.js',
-                content: typeof globalJs === 'string' ? globalJs : '',
+            }] : [],
+          },
+          globalJs: {
+            create: globalJs ? [{
+              jsFile: {
+                create: {
+                  filename: 'global.js',
+                  content: Array.isArray(globalJs) ? '' : globalJs || '',
+                },
               },
-            },
-          }] : [],
+            }] : [],
+          },
         },
-      },
-      include: {
-        sections: {
-          include: {
-            section: true,
-            css: { include: { cssFile: true } },
-            js: { include: { jsFile: true } }
-          }
+        include: {
+          sections: {
+            include: {
+              section: true,
+              css: { include: { cssFile: true } },
+              js: { include: { jsFile: true } }
+            }
+          },
+          globalCss: { include: { cssFile: true } },
+          globalJs: { include: { jsFile: true } }
         },
-        globalCss: { include: { cssFile: true } },
-        globalJs: { include: { jsFile: true } }
-      },
+      });
     });
 
     return NextResponse.json(updatedTemplate);
   } catch (error) {
-    console.error('Failed to update template:', error);
-    return NextResponse.json({ error: 'Failed to update template', details: error.message }, { status: 500 });
+    console.error("Failed to update template:", error);
+    return NextResponse.json(
+      { error: "Failed to update template", details: error.message },
+      { status: 500 }
+    );
   }
 }
 
@@ -134,19 +147,53 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Delete all sections associated with the template
-    await prisma.templateSection.deleteMany({
-      where: { templateId: params.id },
+    // Start a transaction
+    await prisma.$transaction(async (prisma) => {
+      // Delete all related CSS files
+      await prisma.templateCssFile.deleteMany({
+        where: { templateId: params.id },
+      });
+
+      // Delete all related JS files
+      await prisma.templateJsFile.deleteMany({
+        where: { templateId: params.id },
+      });
+
+      // Delete all related section CSS files
+      await prisma.sectionCssFile.deleteMany({
+        where: {
+          templateSection: {
+            templateId: params.id,
+          },
+        },
+      });
+
+      // Delete all related section JS files
+      await prisma.sectionJsFile.deleteMany({
+        where: {
+          templateSection: {
+            templateId: params.id,
+          },
+        },
+      });
+
+      // Delete all sections associated with the template
+      await prisma.templateSection.deleteMany({
+        where: { templateId: params.id },
+      });
+
+      // Finally, delete the template
+      await prisma.template.delete({
+        where: { id: params.id },
+      });
     });
 
-    // Delete the template
-    await prisma.template.delete({
-      where: { id: params.id },
-    });
-
-    return NextResponse.json({ message: 'Template deleted successfully' });
+    return NextResponse.json({ message: "Template deleted successfully" });
   } catch (error) {
-    console.error('Failed to delete template:', error);
-    return NextResponse.json({ error: 'Failed to delete template' }, { status: 500 });
+    console.error("Failed to delete template:", error);
+    return NextResponse.json(
+      { error: "Failed to delete template", details: error.message },
+      { status: 500 }
+    );
   }
 }

@@ -452,7 +452,15 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
   } else if (mode === 'edit' && selectedTemplate) {
     return (
       <div>
-        <h3 className="text-lg font-semibold mb-2">Editing: {selectedTemplate.name}</h3>
+        <div className="flex justify-between items-center mb-4">
+      <h3 className="text-lg font-semibold">Editing: {selectedTemplate.name}</h3>
+      <button
+        onClick={handleSave}
+        className="p-2 bg-[var(--accent-color)] text-[var(--bg-color)] rounded"
+      >
+        Save Changes
+      </button>
+    </div>
         <div className="flex space-x-4">
           <div className="w-1/3 border-r pr-4">
             <h4 className="font-semibold mb-2">Sections:</h4>
