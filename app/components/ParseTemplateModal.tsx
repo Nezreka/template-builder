@@ -16,12 +16,13 @@ interface ParseTemplateModalProps {
 }
 
 interface ParsedSection {
-  id: string;
-  html: string;
-  css: string;
-  editableCss: string;
-  type: string;
-}
+    id: string;
+    html: string;
+    css: string;
+    editableCss: string;
+    js: string;  // Add this line
+    type: string;
+  }
 
 const allSectionTypes = [
   'Hero', 'About Team', 'Featured Listings', 'Featured Neighborhoods',
@@ -55,11 +56,12 @@ export default function ParseTemplateModal({ isOpen, onClose, onParse }: ParseTe
           html: node.outerHTML,
           css: '',
           editableCss: '',
+          js: '',  // Add this line
           type: ''
         });
       }
     });
-
+  
     setParsedSections(newSections);
     setStage('sections');
   };

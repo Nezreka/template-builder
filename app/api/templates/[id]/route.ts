@@ -1,3 +1,4 @@
+// app/api/templates/[id]/route.ts
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
@@ -39,42 +40,51 @@ export async function PUT(
   try {
     const { name, sections, globalCss, globalJs } = await request.json();
 
+    const updatedSections = await Promise.all(sections.map(async (section: any, index: number) => {
+      let sectionId = section.sectionId;
+
+      if (!sectionId) {
+        // If sectionId is not provided, create a new section
+        const newSection = await prisma.section.create({
+          data: { name: section.type || `Section ${index + 1}` },
+        });
+        sectionId = newSection.id;
+      }
+
+      return {
+        order: index,
+        htmlContent: section.html,
+        section: { connect: { id: sectionId } },
+        css: {
+          create: section.css && section.css.length > 0 ? [{
+            cssFile: {
+              create: {
+                filename: `${section.type || `Section ${index + 1}`}_${index}.css`,
+                content: typeof section.css === 'string' ? section.css : '',
+              },
+            },
+          }] : [],
+        },
+        js: {
+          create: section.js && section.js.length > 0 ? [{
+            jsFile: {
+              create: {
+                filename: `${section.type || `Section ${index + 1}`}_${index}.js`,
+                content: typeof section.js === 'string' ? section.js : '',
+              },
+            },
+          }] : [],
+        },
+      };
+    }));
+
     const updatedTemplate = await prisma.template.update({
       where: { id: params.id },
       data: {
         name,
         sections: {
           deleteMany: {},
-          create: sections.map((section: any, index: number) => ({
-            order: index,
-            htmlContent: section.html,
-            section: {
-              connectOrCreate: {
-                where: { name: section.type },
-                create: { name: section.type },
-              },
-            },
-            css: {
-              create: section.css ? [{
-                cssFile: {
-                  create: {
-                    filename: `${section.type}_${index}.css`,
-                    content: section.css,
-                  },
-                },
-              }] : [],
-            },
-            js: {
-              create: section.js ? [{
-                jsFile: {
-                  create: {
-                    filename: `${section.type}_${index}.js`,
-                    content: section.js,
-                  },
-                },
-              }] : [],
-            },
-          })),
+          create: updatedSections,
         },
         globalCss: {
           deleteMany: {},
@@ -82,7 +92,7 @@ export async function PUT(
             cssFile: {
               create: {
                 filename: 'global.css',
-                content: globalCss,
+                content: typeof globalCss === 'string' ? globalCss : '',
               },
             },
           }] : [],
@@ -93,7 +103,7 @@ export async function PUT(
             jsFile: {
               create: {
                 filename: 'global.js',
-                content: globalJs,
+                content: typeof globalJs === 'string' ? globalJs : '',
               },
             },
           }] : [],
@@ -115,6 +125,6 @@ export async function PUT(
     return NextResponse.json(updatedTemplate);
   } catch (error) {
     console.error('Failed to update template:', error);
-    return NextResponse.json({ error: 'Failed to update template' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update template', details: error.message }, { status: 500 });
   }
 }

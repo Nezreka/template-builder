@@ -8,6 +8,8 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { X, Trash2, ArrowLeftRight, ChevronUp, ChevronDown } from 'lucide-react';
 import ParseTemplateModal from './ParseTemplateModal';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { tomorrow } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 type ModalMode = 'add' | 'edit';
 
@@ -174,11 +176,7 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
       css: '',
       js: '',
     };
-    setSections(prevSections => {
-      const newSections = [...prevSections, newSection];
-      setSelectedSectionIndex(newSections.length - 1);  // Select the newly added section
-      return newSections;
-    });
+    setSections(prevSections => [...prevSections, newSection]);
   }, []);
 
   const removeSection = useCallback((id: string) => {
@@ -305,7 +303,6 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
         setGlobalCss(data.globalCss?.[0]?.cssFile?.content || data.globalCss || '');
         setGlobalJs(data.globalJs?.[0]?.jsFile?.content || data.globalJs || '');
         console.log('Processed sections:', sections);
-        setSelectedSectionIndex(0);
       } else {
         throw new Error('Failed to fetch template details');
       }
@@ -337,12 +334,7 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
           },
           body: JSON.stringify({
             name: templateName,
-            sections: sections.map(section => ({
-              type: section.type,
-              html: section.html,
-              css: section.css,
-              js: section.js,  // Make sure this is included
-            })),
+            sections,
             globalCss,
             globalJs,
           }),
@@ -388,146 +380,96 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
     }
   };
 
-  const getAvailableSectionTypes = useCallback(() => {
-    const usedTypes = new Set(sections.map(section => section.type));
-    return allSectionTypes.filter(type => !usedTypes.has(type));
-  }, [sections]);
-
   
 
-  const [selectedSectionIndex, setSelectedSectionIndex] = useState<number | null>(null);
+  
 
   const renderStep = () => {
     switch (step) {
       case 0:
-  if (mode === 'edit' && !selectedTemplate) {
-    return (
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Select a template to edit:</h3>
-        {templates.map(template => (
-          <button
-            key={template.id}
-            onClick={() => handleTemplateSelect(template)}
-            className="block w-full text-left p-2 hover:bg-[var(--secondary-color)] mb-2"
-          >
-            {template.name}
-          </button>
-        ))}
-      </div>
-    );
-  } else if (mode === 'edit' && selectedTemplate) {
-    return (
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Editing: {selectedTemplate.name}</h3>
-        <div className="flex space-x-4">
-          <div className="w-1/3 border-r pr-4">
-            <h4 className="font-semibold mb-2">Sections:</h4>
-            {sections.map((section, index) => (
-              <button
-                key={section.id}
-                onClick={() => setSelectedSectionIndex(index)}
-                className={`block w-full text-left p-2 mb-2 rounded ${selectedSectionIndex === index ? 'bg-[var(--accent-color)] text-[var(--bg-color)]' : 'hover:bg-[var(--secondary-color)]'}`}
-              >
-                {section.type || `Section ${index + 1}`}
-              </button>
-            ))}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  const availableTypes = getAvailableSectionTypes();
-                  if (availableTypes.length > 0) {
-                    addSection(availableTypes[0]);
-                    setSelectedSectionIndex(sections.length);
-                  }
-                }}
-                className="w-full p-2 mt-4 bg-[var(--accent-color)] text-[var(--bg-color)] rounded"
-                disabled={getAvailableSectionTypes().length === 0}
-              >
-                Add New Section
-              </button>
-              {getAvailableSectionTypes().length === 0 && (
-                <p className="text-sm text-red-500 mt-2">All section types are in use</p>
-              )}
-            </div>
-          </div>
-          <div className="w-2/3">
-            {selectedSectionIndex !== null && sections[selectedSectionIndex] && (
-              <div>
-                <h4 className="font-semibold mb-2">Editing: {sections[selectedSectionIndex].type || `Section ${selectedSectionIndex + 1}`}</h4>
-                <select
-                  value={sections[selectedSectionIndex].type}
-                  onChange={(e) => handleSectionChange(selectedSectionIndex, 'type', e.target.value)}
-                  className="w-full p-2 mb-4 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-                >
-                  <option value="">Select section type</option>
-                  {getAvailableSectionTypes().concat(sections[selectedSectionIndex].type).map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-                {['html', 'css', 'js'].map(field => (
-                  <div key={field} className="mb-4">
-                    <h5 className="font-semibold capitalize mb-2">{field}:</h5>
-                    <textarea
-                      value={sections[selectedSectionIndex][field] || ''}
-                      onChange={(e) => handleSectionChange(selectedSectionIndex, field, e.target.value)}
-                      className="w-full h-48 p-2 border rounded bg-[var(--secondary-color)] text-[var(--text-color)]"
-                    />
-                  </div>
-                ))}
+        if (mode === 'edit' && !selectedTemplate) {
+          return (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Select a template to edit:</h3>
+              {templates.map(template => (
                 <button
-                  onClick={() => removeSection(sections[selectedSectionIndex].id)}
-                  className="p-2 bg-red-500 text-white rounded flex items-center"
+                  key={template.id}
+                  onClick={() => handleTemplateSelect(template)}
+                  className="block w-full text-left p-2 hover:bg-[var(--secondary-color)] mb-2"
                 >
-                  <Trash2 size={16} className="mr-2" /> Delete Section
+                  {template.name}
                 </button>
+              ))}
+            </div>
+          );
+        } else if (mode === 'edit' && selectedTemplate) {
+          console.log('Rendering edit mode, sections:', sections);
+          return (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Editing: {selectedTemplate.name}</h3>
+              {sections.length === 0 ? (
+                <p>No sections found</p>
+              ) : (
+                sections.map((section, index) => (
+                  <div key={section.id} className="mb-4 p-4 luxury-panel">
+                    <h4 className="font-semibold mb-2">Section: {section.type || 'Unknown'}</h4>
+                    {['html', 'css', 'js'].map(field => (
+                      <div key={field} className="mb-2">
+                        <h5 className="font-semibold capitalize">{field}:</h5>
+                        <div className="mb-2">
+                          <SyntaxHighlighter
+                            language={field}
+                            style={tomorrow}
+                            customStyle={{ 
+                              backgroundColor: 'var(--secondary-color)',
+                              padding: '1rem',
+                              borderRadius: '0.25rem',
+                            }}
+                          >
+                            {section[field] || '// No content'}
+                          </SyntaxHighlighter>
+                        </div>
+                        <textarea
+                          value={section[field] || ''}
+                          onChange={(e) => handleSectionChange(index, field, e.target.value)}
+                          className="w-full h-32 p-2 border rounded bg-[var(--secondary-color)] text-[var(--text-color)]"
+                        />
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => removeSection(section.id)}
+                      className="mt-2 p-2 bg-red-500 text-white rounded flex items-center"
+                    >
+                      <Trash2 size={16} className="mr-2" /> Delete Section
+                    </button>
+                  </div>
+                ))
+              )}
+              <button
+                onClick={handleSave}
+                className="mt-4 p-2 bg-[var(--accent-color)] text-[var(--bg-color)] rounded"
+              >
+                Save Changes
+              </button>
+            </div>
+          );
+        } else  {
+          return (
+            <div>
+              <input
+                type="text"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="Template Name"
+                className="w-full p-2 mb-4 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+              />
+              <div className="flex justify-between">
+                <button onClick={handleNextStep} className="luxury-button">Next</button>
+                <button onClick={() => setIsParseModalOpen(true)} className="luxury-button">Parse Template</button>
               </div>
-            )}
-          </div>
-        </div>
-        <div className="mt-8">
-          <h4 className="font-semibold mb-2">Global Styles and Scripts</h4>
-          <div className="mb-4">
-            <h5 className="font-semibold mb-2">Global CSS:</h5>
-            <textarea
-              value={globalCss}
-              onChange={(e) => setGlobalCss(e.target.value)}
-              className="w-full h-48 p-2 border rounded bg-[var(--secondary-color)] text-[var(--text-color)]"
-            />
-          </div>
-          <div className="mb-4">
-            <h5 className="font-semibold mb-2">Global JavaScript:</h5>
-            <textarea
-              value={globalJs}
-              onChange={(e) => setGlobalJs(e.target.value)}
-              className="w-full h-48 p-2 border rounded bg-[var(--secondary-color)] text-[var(--text-color)]"
-            />
-          </div>
-        </div>
-        <button
-          onClick={handleSave}
-          className="mt-4 p-2 bg-[var(--accent-color)] text-[var(--bg-color)] rounded"
-        >
-          Save Changes
-        </button>
-      </div>
-    );
-  } else {
-    return (
-      <div>
-        <input
-          type="text"
-          value={templateName}
-          onChange={(e) => setTemplateName(e.target.value)}
-          placeholder="Template Name"
-          className="w-full p-2 mb-4 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-        />
-        <div className="flex justify-between">
-          <button onClick={handleNextStep} className="luxury-button">Next</button>
-          <button onClick={() => setIsParseModalOpen(true)} className="luxury-button">Parse Template</button>
-        </div>
-      </div>
-    );
-  }
+            </div>
+          );
+        }
       case 1:
         return (
           <DndProvider backend={HTML5Backend}>
