@@ -177,6 +177,30 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
     setSelectedSectionIndex(null);
     setError(null);
   };
+
+  const handleDeleteTemplate = async () => {
+    if (!selectedTemplate) return;
+  
+    const confirmDelete = window.confirm("Are you sure you want to delete this template? This action cannot be undone.");
+    if (!confirmDelete) return;
+  
+    try {
+      const response = await fetch(`/api/templates/${selectedTemplate.id}`, {
+        method: 'DELETE',
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to delete template');
+      }
+  
+      onClose();
+      // Optionally, you can call a function to refresh the template list
+      // refreshTemplates();
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      setError('Failed to delete template. Please try again.');
+    }
+  };
   
 
   const addSection = useCallback((type: string) => {
@@ -513,12 +537,20 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
             />
           </div>
         </div>
-        <button
-          onClick={handleSave}
-          className="mt-4 p-2 bg-[var(--accent-color)] text-[var(--bg-color)] rounded"
-        >
-          Save Changes
-        </button>
+        <div className="flex justify-between mt-4">
+  <button
+    onClick={handleSave}
+    className="p-2 bg-[var(--accent-color)] text-[var(--bg-color)] rounded"
+  >
+    Save Changes
+  </button>
+  <button
+    onClick={handleDeleteTemplate}
+    className="p-2 bg-red-500 text-white rounded"
+  >
+    Delete Template
+  </button>
+</div>
       </div>
     );
   } else {

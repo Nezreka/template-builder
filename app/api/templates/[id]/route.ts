@@ -128,3 +128,25 @@ export async function PUT(
     return NextResponse.json({ error: 'Failed to update template', details: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Delete all sections associated with the template
+    await prisma.templateSection.deleteMany({
+      where: { templateId: params.id },
+    });
+
+    // Delete the template
+    await prisma.template.delete({
+      where: { id: params.id },
+    });
+
+    return NextResponse.json({ message: 'Template deleted successfully' });
+  } catch (error) {
+    console.error('Failed to delete template:', error);
+    return NextResponse.json({ error: 'Failed to delete template' }, { status: 500 });
+  }
+}
