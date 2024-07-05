@@ -194,10 +194,10 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
     });
   }, []);
 
-  const handleParseTemplate = (parsedSections: SectionItem[], name: string) => {
+  const handleParseTemplate = (parsedSections: ParsedSection[], name: string) => {
     setTemplateName(name);
     setSections(parsedSections);
-    setStep(2); // Move to section details step
+    setStep(3); // Skip to the global CSS/JS step
     setIsParseModalOpen(false);
   };
 
@@ -235,7 +235,11 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
 
   const handleNextStep = async () => {
     if (await validateStep()) {
-      setStep(step + 1);
+      if (step === 1) {
+        setStep(3); // Skip step 2
+      } else {
+        setStep(step + 1);
+      }
     }
   };
 
@@ -624,27 +628,27 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
       case 3:
         return (
           <div>
-            <h3 className="text-lg mb-2 text-[var(--accent-color)]">Global Styles and Scripts</h3>
-            <textarea
-              value={globalCss}
-              onChange={(e) => setGlobalCss(e.target.value)}
-              placeholder="Global CSS"
-              className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-            />
-            <textarea
-              value={globalJs}
-              onChange={(e) => setGlobalJs(e.target.value)}
-              placeholder="Global JavaScript"
-              className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-            />
-            <button onClick={handleSubmit} className="luxury-button">
-              {mode === 'add' ? 'Create Template' : 'Update Template'}
-            </button>
-          </div>
-        );
-      default:
-        return null;
-    }
+          <h3 className="text-lg mb-2 text-[var(--accent-color)]">Global Styles and Scripts</h3>
+          <textarea
+            value={globalCss}
+            onChange={(e) => setGlobalCss(e.target.value)}
+            placeholder="Global CSS"
+            className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+          />
+          <textarea
+            value={globalJs}
+            onChange={(e) => setGlobalJs(e.target.value)}
+            placeholder="Global JavaScript"
+            className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+          />
+          <button onClick={handleSubmit} className="luxury-button">
+            {mode === 'add' ? 'Create Template' : 'Update Template'}
+          </button>
+        </div>
+      );
+    default:
+      return null;
+  }
   };
 
   const [, availableDrop] = useDrop(() => ({
