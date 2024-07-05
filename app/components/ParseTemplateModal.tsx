@@ -52,6 +52,28 @@ export default function ParseTemplateModal({
   const [htmlInput, setHtmlInput] = useState("");
   const [parsedSections, setParsedSections] = useState<ParsedSection[]>([]);
   const [stage, setStage] = useState<"input" | "sections">("input");
+  const [nameError, setNameError] = useState<string | null>(null);
+const [htmlError, setHtmlError] = useState<string | null>(null);
+
+const resetState = () => {
+  setTemplateName("");
+  setHtmlInput("");
+  setParsedSections([]);
+  setStage("input");
+  setNameError(null);
+  setHtmlError(null);
+};
+
+const checkTemplateName = async (name: string) => {
+  try {
+    const response = await fetch(`/api/templates/check-name?name=${encodeURIComponent(name.trim().toLowerCase())}`);
+    const { exists } = await response.json();
+    return exists;
+  } catch (error) {
+    console.error('Error checking template name:', error);
+    return false;
+  }
+};
 
   const usedSectionTypes = useMemo(() => {
     return new Set(
@@ -63,13 +85,31 @@ export default function ParseTemplateModal({
     return allSectionTypes.filter((type) => !usedSectionTypes.has(type));
   }, [usedSectionTypes]);
 
-  const parseHTML = () => {
+  const parseHTML = async () => {
+    setNameError(null);
+    setHtmlError(null);
+  
+    if (!templateName.trim()) {
+      setNameError("Template name is required.");
+      return;
+    }
+  
+    const nameExists = await checkTemplateName(templateName);
+    if (nameExists) {
+      setNameError("A template with this name already exists.");
+      return;
+    }
+  
+    if (!htmlInput.trim()) {
+      setHtmlError("HTML content is required.");
+      return;
+    }
+  
     const root = parse(htmlInput);
     const newSections: ParsedSection[] = [];
-
+  
     root.childNodes.forEach((node: any) => {
       if (node.nodeType === 1) {
-        // Element node
         newSections.push({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
           html: node.outerHTML,
@@ -81,7 +121,12 @@ export default function ParseTemplateModal({
         });
       }
     });
-
+  
+    if (newSections.length === 0) {
+      setHtmlError("No valid HTML elements found.");
+      return;
+    }
+  
     setParsedSections(newSections);
     setStage("sections");
   };
@@ -130,16 +175,28 @@ export default function ParseTemplateModal({
   };
 
   const handleConfirm = () => {
+    if (parsedSections.some(section => !section.type)) {
+      alert("Please assign a type to all sections before confirming.");
+      return;
+    }
     onParse(parsedSections.map(section => ({
       ...section,
       css: section.editableCss,
       js: section.editableJs
     })), templateName);
+    resetState();
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+    <Dialog 
+  open={isOpen} 
+  onClose={() => {
+    resetState();
+    onClose();
+  }} 
+  className="relative z-50"
+>
       <div className="fixed inset-0 bg-black/70" aria-hidden="true" />
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <Dialog.Panel className="luxury-panel w-full max-w-6xl p-6 max-h-[90vh] overflow-y-auto">
@@ -148,24 +205,26 @@ export default function ParseTemplateModal({
           </Dialog.Title>
 
           {stage === "input" ? (
-            <>
-              <input
-                type="text"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="Template Name"
-                className="w-full p-2 mb-4 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-              />
-              <textarea
-                value={htmlInput}
-                onChange={(e) => setHtmlInput(e.target.value)}
-                placeholder="Paste your HTML here"
-                className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-              />
-              <button onClick={parseHTML} className="luxury-button">
-                Parse HTML
-              </button>
-            </>
+  <>
+    <input
+      type="text"
+      value={templateName}
+      onChange={(e) => setTemplateName(e.target.value)}
+      placeholder="Template Name"
+      className="w-full p-2 mb-4 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+    />
+    {nameError && <p className="text-red-500 mb-2">{nameError}</p>}
+    <textarea
+      value={htmlInput}
+      onChange={(e) => setHtmlInput(e.target.value)}
+      placeholder="Paste your HTML here"
+      className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+    />
+    {htmlError && <p className="text-red-500 mb-2">{htmlError}</p>}
+    <button onClick={parseHTML} className="luxury-button">
+      Parse HTML
+    </button>
+  </>
           ) : (
             <>
               <h3 className="text-lg mb-2 text-[var(--accent-color)]">

@@ -8,6 +8,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { X, Trash2, ArrowLeftRight, ChevronUp, ChevronDown } from 'lucide-react';
 import ParseTemplateModal from './ParseTemplateModal';
 import ReactMarkdown from 'react-markdown';
+import TemplateSelector from './TemplateSelector';
 
 type ModalMode = 'add' | 'edit';
 
@@ -176,6 +177,7 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
     setSelectedSectionIndex(null);
     setError(null);
   };
+  
 
   const addSection = useCallback((type: string) => {
     const newSection = {
@@ -208,6 +210,8 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
   const handleParseTemplate = (parsedSections: ParsedSection[], name: string) => {
     setTemplateName(name);
     setSections(parsedSections);
+    setGlobalCss('');  // Reset global CSS
+    setGlobalJs('');  // Reset global JS
     setStep(3); // Skip to the global CSS/JS step
     setIsParseModalOpen(false);
   };
@@ -413,18 +417,13 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
       case 0:
   if (mode === 'edit' && !selectedTemplate) {
     return (
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Select a template to edit:</h3>
-        {templates.map(template => (
-          <button
-            key={template.id}
-            onClick={() => handleTemplateSelect(template)}
-            className="block w-full text-left p-2 hover:bg-[var(--secondary-color)] mb-2"
-          >
-            {template.name}
-          </button>
-        ))}
-      </div>
+      <TemplateSelector
+        onSelect={handleTemplateSelect}
+        onClose={() => {
+          onClose();
+          resetState();
+        }}
+      />
     );
   } else if (mode === 'edit' && selectedTemplate) {
     return (
@@ -534,7 +533,16 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
         />
         <div className="flex justify-between">
           <button onClick={handleNextStep} className="luxury-button">Next</button>
-          <button onClick={() => setIsParseModalOpen(true)} className="luxury-button">Parse Template</button>
+          <button onClick={() => {
+  setIsParseModalOpen(true);
+  setTemplateName('');
+  setSections([]);
+  setGlobalCss('');
+  setGlobalJs('');
+  setError(null);
+}} className="luxury-button">
+  Parse Template
+</button>
         </div>
       </div>
     );
@@ -714,7 +722,10 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
 
       <ParseTemplateModal
         isOpen={isParseModalOpen}
-        onClose={() => setIsParseModalOpen(false)}
+        onClose={() => {
+          setIsParseModalOpen(false);
+          // Reset any other relevant state here
+        }}
         onParse={handleParseTemplate}
       />
     </>
