@@ -166,6 +166,17 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
 
+  const resetState = () => {
+    setSelectedTemplate(null);
+    setStep(0);
+    setTemplateName('');
+    setSections([]);
+    setGlobalCss('');
+    setGlobalJs('');
+    setSelectedSectionIndex(null);
+    setError(null);
+  };
+
   const addSection = useCallback((type: string) => {
     const newSection = {
       id: Date.now().toString(),
@@ -244,17 +255,13 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
   };
 
   useEffect(() => {
-    if (mode === 'edit' && isOpen) {
-      fetchTemplates();
-    } else {
-      // Reset state for new template
-      setTemplateName('');
-      setSections([]);
-      setGlobalCss('');
-      setGlobalJs('');
-      setStep(0);
+    if (isOpen) {
+      if (mode === 'edit') {
+        fetchTemplates();
+      }
+      resetState();
     }
-  }, [mode, isOpen]);
+  }, [isOpen, mode]);
 
   const fetchTemplates = async () => {
     try {
@@ -673,7 +680,14 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
 
   return (
     <>
-      <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+      <Dialog 
+  open={isOpen} 
+  onClose={() => {
+    onClose();
+    resetState();
+  }} 
+  className="relative z-50"
+>
         <div className="fixed inset-0 bg-black/70" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="luxury-panel w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
@@ -686,11 +700,14 @@ export default function TemplateModal({ isOpen, onClose, mode, templateId }: Tem
             {renderStep()}
 
             <button
-              onClick={onClose}
-              className="absolute top-2 right-2 p-1 rounded-full hover:bg-[var(--secondary-color)]"
-            >
-              <X size={24} className="text-[var(--accent-color)]" />
-            </button>
+  onClick={() => {
+    onClose();
+    resetState();
+  }}
+  className="absolute top-2 right-2 p-1 rounded-full hover:bg-[var(--secondary-color)]"
+>
+  <X size={24} className="text-[var(--accent-color)]" />
+</button>
           </Dialog.Panel>
         </div>
       </Dialog>
