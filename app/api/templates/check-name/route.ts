@@ -11,10 +11,14 @@ export async function GET(req: Request) {
   }
 
   try {
-    const result = await prisma.$queryRaw`
-      SELECT * FROM Template
-      WHERE LOWER(name) = LOWER(${name})
-    `;
+    const result = await prisma.template.findMany({
+      where: {
+        name: {
+          equals: name,
+          mode: 'insensitive'
+        }
+      }
+    });
 
     const exists = result.length > 0;
 
