@@ -14,16 +14,26 @@ const allOptions = [
   'Social Feeds', 'Action Bar', 'Lifestyles', 'Latest Listings'
 ];
 
+interface SectionData {
+  type: string
+  selectedTemplate?: string
+  content?: {
+    html: string
+    css: string
+    js: string
+  }
+}
+
 export default function Home() {
-  const [template, setTemplate] = useState<string[]>([])
+  const [template, setTemplate] = useState<SectionData[]>([])
   const [availableOptions, setAvailableOptions] = useState<string[]>(allOptions)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
 
   const addToTemplate = useCallback((item: string) => {
     setTemplate(prevTemplate => {
-      if (!prevTemplate.includes(item)) {
-        return [...prevTemplate, item]
+      if (!prevTemplate.some(section => section.type === item)) {
+        return [...prevTemplate, { type: item }]
       }
       return prevTemplate
     })
@@ -31,7 +41,7 @@ export default function Home() {
   }, [])
 
   const removeFromTemplate = useCallback((item: string) => {
-    setTemplate(prevTemplate => prevTemplate.filter(i => i !== item))
+    setTemplate(prevTemplate => prevTemplate.filter(section => section.type !== item))
     setAvailableOptions(prevOptions => {
       if (!prevOptions.includes(item)) {
         return [...prevOptions, item]
@@ -49,10 +59,14 @@ export default function Home() {
     })
   }, [])
 
-  const updateTemplateItem = useCallback((index: number, newTemplate: string) => {
+  const updateTemplateItem = useCallback((index: number, templateName: string, templateContent: { html: string, css: string, js: string }) => {
     setTemplate(prevTemplate => {
       const updatedTemplate = [...prevTemplate]
-      updatedTemplate[index] = newTemplate
+      updatedTemplate[index] = {
+        ...updatedTemplate[index],
+        selectedTemplate: templateName,
+        content: templateContent
+      }
       return updatedTemplate
     })
   }, [])

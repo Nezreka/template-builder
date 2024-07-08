@@ -35,9 +35,9 @@ function DraggableOption({ name, addToTemplate }: { name: string, addToTemplate:
 
 export default function Sidebar({ availableOptions, addToTemplate }: { availableOptions: string[], addToTemplate: (item: string) => void }) {
   return (
-    <div className="luxury-panel w-80 p-6 mr-8">
+    <div className="luxury-panel w-80 p-6 mr-8 flex flex-col h-full">
       <h2 className="text-2xl font-bold mb-6 text-center text-[var(--accent-color)]">Options</h2>
-      <div className="space-y-4">
+      <div className="space-y-4 overflow-y-auto flex-grow">
         {availableOptions.map((option) => (
           <DraggableOption 
             key={option} 

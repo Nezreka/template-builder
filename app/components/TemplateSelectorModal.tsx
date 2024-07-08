@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { Dialog } from "@headlessui/react"
+import { X, Search } from 'lucide-react'
 
 interface TemplateSelectorModalProps {
   isOpen: boolean
   onClose: () => void
   sectionType: string
-  onSelectTemplate: (template: string) => void
+  onSelectTemplate: (templateName: string, templateContent: { html: string, css: string, js: string }) => void
 }
 
 interface Template {
@@ -24,6 +25,7 @@ export default function TemplateSelectorModal({ isOpen, onClose, sectionType, on
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     if (isOpen) {
@@ -50,49 +52,77 @@ export default function TemplateSelectorModal({ isOpen, onClose, sectionType, on
   };
 
   const handleSelectTemplate = (template: Template) => {
-    // Assuming we want to use the first matching section's content
     const section = template.sections[0];
     const htmlContent = section.htmlContent;
     const cssContent = section.css[0]?.cssFile.content || '';
     const jsContent = section.js[0]?.jsFile.content || '';
 
-    onSelectTemplate(`${htmlContent}\n\n<style>\n${cssContent}\n</style>\n\n<script>\n${jsContent}\n</script>`);
+    onSelectTemplate(template.name, {
+      html: htmlContent,
+      css: cssContent,
+      js: jsContent
+    });
     onClose();
   };
+
+  const filteredTemplates = templates.filter((template) =>
+    template.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed z-10 inset-0 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="fixed inset-0 bg-black opacity-30" onClick={onClose} />
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/70" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel className="luxury-panel w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+          <Dialog.Title className="text-2xl font-bold mb-6 text-[var(--accent-color)]">
+            Select {sectionType} Template
+          </Dialog.Title>
 
-        <div className="relative bg-[var(--bg-color)] rounded max-w-md mx-auto p-6">
-          <h2 className="text-2xl font-bold mb-4 text-[var(--accent-color)]">{sectionType} Templates</h2>
-          <button onClick={onClose} className="absolute top-2 right-2 p-1 rounded-full hover:bg-[var(--secondary-color)]">
-            <X size={24} className="text-[var(--accent-color)]" />
-          </button>
+          <div className="mb-6 relative">
+            <input
+              type="text"
+              placeholder="Search templates..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full p-2 pl-10 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+            />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--accent-color)]"
+              size={20}
+            />
+          </div>
 
           {loading && <p>Loading templates...</p>}
           {error && <p className="text-red-500">{error}</p>}
           
-          <div className="space-y-3">
-            {templates.map((template) => (
-              <button
+          <div className="grid grid-cols-3 gap-4">
+            {filteredTemplates.map((template) => (
+              <div
                 key={template.id}
                 onClick={() => handleSelectTemplate(template)}
-                className="luxury-panel w-full text-left p-4 rounded transition-all hover:scale-105"
+                className="bg-[var(--secondary-color)] p-4 rounded cursor-pointer hover:bg-[var(--accent-color)] hover:text-[var(--bg-color)] transition-colors duration-200 flex items-center justify-center"
               >
-                {template.name}
-              </button>
+                <h3 className="text-lg font-semibold text-center truncate">
+                  {template.name}
+                </h3>
+              </div>
             ))}
           </div>
 
-          {!loading && templates.length === 0 && (
-            <p>No templates found for this section type.</p>
+          {!loading && filteredTemplates.length === 0 && (
+            <p className="text-center text-gray-400 mt-6">No templates found</p>
           )}
-        </div>
+
+          <button
+            onClick={onClose}
+            className="absolute top-2 right-2 p-1 rounded-full hover:bg-[var(--secondary-color)]"
+          >
+            <X size={24} className="text-[var(--accent-color)]" />
+          </button>
+        </Dialog.Panel>
       </div>
-    </div>
-  )
+    </Dialog>
+  );
 }

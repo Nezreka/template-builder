@@ -2,6 +2,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+function capitalizeWords(str: string) {
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+}
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -29,7 +33,13 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(template);
+    // Capitalize the template name
+    const capitalizedTemplate = {
+      ...template,
+      name: capitalizeWords(template.name)
+    };
+
+    return NextResponse.json(capitalizedTemplate);
   } catch (error) {
     console.error("Failed to fetch template:", error);
     return NextResponse.json(

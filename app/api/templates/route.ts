@@ -2,6 +2,10 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+function capitalizeWords(str: string) {
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+}
+
 export async function GET() {
   try {
     const templates = await prisma.template.findMany({
@@ -18,7 +22,13 @@ export async function GET() {
       }
     });
 
-    return NextResponse.json(templates);
+    // Capitalize template names
+    const capitalizedTemplates = templates.map(template => ({
+      ...template,
+      name: capitalizeWords(template.name)
+    }));
+
+    return NextResponse.json(capitalizedTemplates);
   } catch (error) {
     console.error('Failed to fetch templates:', error);
     return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 });
@@ -35,7 +45,6 @@ export async function POST(req: Request) {
         description,
         sections: {
           create: await Promise.all(sections.map(async (section: any, index: number) => {
-            // First, find or create the Section
             let sectionEntity = await prisma.section.findFirst({
               where: { name: section.type }
             });

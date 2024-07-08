@@ -2,15 +2,15 @@
 
 import { useDrop, useDrag } from 'react-dnd'
 import { useRef, useState } from 'react'
-import { ChevronUp, ChevronDown, X } from 'lucide-react'
+import { ChevronUp, ChevronDown, X, Crown } from 'lucide-react'
 import TemplateSelectorModal from './TemplateSelectorModal'
 
 interface BuildAreaProps {
-  template: string[]
+  template: SectionData[]
   addToTemplate: (item: string) => void
   removeFromTemplate: (item: string) => void
   reorderTemplate: (dragIndex: number, hoverIndex: number) => void
-  updateTemplateItem: (index: number, newTemplate: string) => void
+  updateTemplateItem: (index: number, templateName: string, templateContent: { html: string, css: string, js: string }) => void
 }
 
 interface DragItem {
@@ -19,12 +19,22 @@ interface DragItem {
   type: string
 }
 
+interface SectionData {
+  type: string
+  selectedTemplate?: string
+  content?: {
+    html: string
+    css: string
+    js: string
+  }
+}
+
 function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemplateItem, removeFromTemplate }: { 
-  item: string, 
+  item: SectionData, 
   index: number, 
   reorderTemplate: (dragIndex: number, hoverIndex: number) => void,
   templateLength: number,
-  updateTemplateItem: (index: number, newTemplate: string) => void,
+  updateTemplateItem: (index: number, templateName: string, templateContent: { html: string, css: string, js: string }) => void,
   removeFromTemplate: (item: string) => void
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -63,7 +73,7 @@ function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemp
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'templateItem',
     item: () => {
-      return { id: item, index, type: 'templateItem' }
+      return { id: item.type, index, type: 'templateItem' }
     },
     end: (item, monitor) => {
       const dropResult = monitor.getDropResult()
@@ -76,8 +86,16 @@ function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemp
     }),
   }), [item, index, removeFromTemplate])
 
-  const opacity = isDragging ? 0.4 : 1
   drag(drop(ref))
+
+  const handleSelectTemplate = (templateName: string, templateContent: { html: string, css: string, js: string }) => {
+    updateTemplateItem(index, templateName, templateContent)
+    setIsModalOpen(false)
+  }
+
+  const openModal = () => {
+    setIsModalOpen(true)
+  }
 
   const moveItem = (direction: 'up' | 'down') => {
     const newIndex = direction === 'up' ? index - 1 : index + 1
@@ -86,48 +104,49 @@ function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemp
     }
   }
 
-  const handleSelectTemplate = (newTemplate: string) => {
-    updateTemplateItem(index, newTemplate)
-    setIsModalOpen(false)
-  }
-
   return (
     <>
       <div 
         ref={ref} 
-        style={{ opacity }} 
-        className="luxury-panel p-4 transition-all group relative cursor-move" 
+        style={{ opacity: isDragging ? 0.4 : 1 }} 
+        className="luxury-panel p-6 transition-all group relative cursor-pointer hover:shadow-lg" 
         data-handler-id={handlerId}
-        onClick={() => setIsModalOpen(true)}  // Add this line
+        onClick={openModal}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <span className="mr-3 text-2xl text-[var(--accent-color)]">☰</span>
-            <div>
-              <h3 className="text-lg font-semibold">{item}</h3>
-              <p className="text-sm text-gray-400">Click to select template</p>
-            </div>
+          <div className="flex-1">
+            <h3 className="text-2xl font-bold mb-2 text-[var(--accent-color)]">{item.type}</h3>
+            {item.selectedTemplate ? (
+              <div className="flex items-center">
+                <p className="text-lg text-[var(--text-color)]">
+                  Selected: <span className="font-semibold">{item.selectedTemplate}</span>
+                </p>
+                <Crown size={20} className="ml-2 text-[var(--accent-color)]" />
+              </div>
+            ) : (
+              <p className="text-lg text-[var(--text-color)] italic">No template selected</p>
+            )}
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center space-x-2">
             <button
               onClick={(e) => { e.stopPropagation(); moveItem('up'); }}
-              className="p-1 hover:bg-[var(--secondary-color)] rounded mr-1"
+              className="p-2 hover:bg-[var(--secondary-color)] rounded transition-colors"
               disabled={index === 0}
             >
-              <ChevronUp size={20} className="text-[var(--accent-color)]" />
+              <ChevronUp size={24} className="text-[var(--accent-color)]" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); moveItem('down'); }}
-              className="p-1 hover:bg-[var(--secondary-color)] rounded mr-1"
+              className="p-2 hover:bg-[var(--secondary-color)] rounded transition-colors"
               disabled={index === templateLength - 1}
             >
-              <ChevronDown size={20} className="text-[var(--accent-color)]" />
+              <ChevronDown size={24} className="text-[var(--accent-color)]" />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); removeFromTemplate(item); }}
-              className="p-1 hover:bg-[var(--secondary-color)] rounded"
+              onClick={(e) => { e.stopPropagation(); removeFromTemplate(item.type); }}
+              className="p-2 hover:bg-red-500 hover:text-white rounded transition-colors"
             >
-              <X size={20} className="text-[var(--accent-color)]" />
+              <X size={24} className="text-[var(--accent-color)]" />
             </button>
           </div>
         </div>
@@ -135,7 +154,7 @@ function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemp
       <TemplateSelectorModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        sectionType={item}
+        sectionType={item.type}
         onSelectTemplate={handleSelectTemplate}
       />
     </>
@@ -155,12 +174,12 @@ export default function BuildArea({ template, addToTemplate, removeFromTemplate,
 
   return (
     <div ref={drop} className="luxury-panel flex-1 p-8 overflow-hidden flex flex-col">
-      <h2 className="text-3xl font-bold mb-6 text-center text-[var(--accent-color)]">Template Builder</h2>
-      <div className="luxury-panel bg-[var(--secondary-color)] p-6 flex-1 overflow-y-auto space-y-4">
+      <h2 className="text-4xl font-bold mb-8 text-center text-[var(--accent-color)]">Template Builder</h2>
+      <div className="luxury-panel bg-[var(--secondary-color)] p-6 flex-1 overflow-y-auto space-y-6">
         {template.map((item, index) => (
           <TemplateItem 
-            key={item + index} 
-            item={item} 
+            key={item.type + index} 
+            item={item}
             index={index} 
             reorderTemplate={reorderTemplate} 
             templateLength={template.length}
@@ -169,7 +188,7 @@ export default function BuildArea({ template, addToTemplate, removeFromTemplate,
           />
         ))}
         {template.length === 0 && (
-          <p className="text-center text-gray-500 mt-8">Drag items here to build your template</p>
+          <p className="text-center text-xl text-gray-500 mt-8">Drag items here to build your template</p>
         )}
       </div>
     </div>
