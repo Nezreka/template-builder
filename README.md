@@ -96,14 +96,14 @@ Intuitive Endpoints: Utilizes standard HTTP methods (GET, POST, PUT, DELETE) for
 Query Parameters: Supports filtering templates by section type.
 
 Key Endpoints:
-'''
+```
 GET /api/templates: Retrieve all templates
 POST /api/templates: Create a new template
 GET /api/templates/[id]: Retrieve a specific template
 PUT /api/templates/[id]: Update a specific template
 DELETE /api/templates/[id]: Delete a specific template
 GET /api/templates/by-section?type=[sectionType]: Retrieve templates by section type
-'''
+```
 
 These endpoints provide a clean, intuitive interface for interacting with template data, following common REST conventions while maintaining simplicity and ease of use.
 
