@@ -13,7 +13,7 @@ Template Builder is a sophisticated, user-friendly web application designed to s
 - 🎨 **Custom Templates**: Create, edit, and manage custom templates for various website components.
 - 💾 **Database Integration**: Utilizes Prisma with SQLite for efficient data management and persistence.
 - 🔍 **Template Preview**: Real-time preview of assembled templates.
-- 🔄 **API Routes**: RESTful API endpoints for template CRUD operations.
+- 🔄 **API Routes**: API endpoints for template CRUD operations.
 - 🎭 **Luxurious UI**: Elegant, responsive design with a focus on user experience.
 
 ## 🚀 Getting Started
@@ -88,6 +88,23 @@ Template Builder is a sophisticated, user-friendly web application designed to s
 - **Database**: SQLite with Prisma ORM
 - **API**: Next.js API Routes
 - **Drag and Drop**: react-dnd
+
+🔄 API
+
+REST-like API: Implements a set of HTTP endpoints following many REST principles for template CRUD operations.
+Intuitive Endpoints: Utilizes standard HTTP methods (GET, POST, PUT, DELETE) for resource manipulation.
+Query Parameters: Supports filtering templates by section type.
+
+Key Endpoints:
+
+GET /api/templates: Retrieve all templates
+POST /api/templates: Create a new template
+GET /api/templates/[id]: Retrieve a specific template
+PUT /api/templates/[id]: Update a specific template
+DELETE /api/templates/[id]: Delete a specific template
+GET /api/templates/by-section?type=[sectionType]: Retrieve templates by section type
+
+These endpoints provide a clean, intuitive interface for interacting with template data, following common REST conventions while maintaining simplicity and ease of use.
 
 ## 📁 Project Structure
 
