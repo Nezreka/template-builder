@@ -4,7 +4,7 @@
 
 Template Builder is a sophisticated, user-friendly web application designed to streamline the process of creating and managing website templates. Built with Next.js, TypeScript, and Prisma, this tool empowers developers and designers to construct modular, reusable website sections with ease.
 
-![Template Builder Demo](https://imgur.com/a/Oc4mtG5)
+![Demo](URL_of_the_GIF)
 
 ## ✨ Features
 
