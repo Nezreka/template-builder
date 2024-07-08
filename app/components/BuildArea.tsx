@@ -1,7 +1,7 @@
 'use client'
 
 import { useDrop, useDrag } from 'react-dnd'
-import { useRef, useState } from 'react'
+import { useRef, useState, useCallback } from 'react'
 import { ChevronUp, ChevronDown, X, Crown } from 'lucide-react'
 import TemplateSelectorModal from './TemplateSelectorModal'
 
@@ -38,6 +38,8 @@ function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemp
   removeFromTemplate: (item: string) => void
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+
   const ref = useRef<HTMLDivElement>(null)
   const [{ handlerId }, drop] = useDrop({
     accept: 'templateItem',
@@ -93,9 +95,14 @@ function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemp
     setIsModalOpen(false)
   }
 
-  const openModal = () => {
+  const openModal = useCallback(() => {
     setIsModalOpen(true)
-  }
+    setIsLoadingTemplates(true)
+    // Simulate API call delay
+    setTimeout(() => {
+      setIsLoadingTemplates(false)
+    }, 1000)
+  }, [])
 
   const moveItem = (direction: 'up' | 'down') => {
     const newIndex = direction === 'up' ? index - 1 : index + 1
@@ -156,6 +163,7 @@ function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemp
         onClose={() => setIsModalOpen(false)}
         sectionType={item.type}
         onSelectTemplate={handleSelectTemplate}
+        isLoading={isLoadingTemplates}
       />
     </>
   )

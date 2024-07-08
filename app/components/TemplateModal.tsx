@@ -15,6 +15,7 @@ import {
 import ParseTemplateModal from "./ParseTemplateModal";
 import ReactMarkdown from "react-markdown";
 import TemplateSelector from "./TemplateSelector";
+import { Loader2 } from 'lucide-react';
 
 type ModalMode = "add" | "edit";
 
@@ -211,6 +212,9 @@ export default function TemplateModal({
   const [isParseModalOpen, setIsParseModalOpen] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
   const resetState = () => {
     setSelectedTemplate(null);
@@ -225,27 +229,30 @@ export default function TemplateModal({
 
   const handleDeleteTemplate = async () => {
     if (!selectedTemplate) return;
-
+  
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this template? This action cannot be undone."
     );
     if (!confirmDelete) return;
-
+  
+    setIsDeleting(true);
     try {
       const response = await fetch(`/api/templates/${selectedTemplate.id}`, {
         method: "DELETE",
       });
-
+  
       if (!response.ok) {
-        throw new Error("Failed to delete template");
+        throw new Error('Failed to delete template');
       }
-
+  
       onClose();
       // Optionally, you can call a function to refresh the template list
       // refreshTemplates();
     } catch (error) {
       console.error("Error deleting template:", error);
       setError("Failed to delete template. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -343,7 +350,8 @@ export default function TemplateModal({
   useEffect(() => {
     if (isOpen) {
       if (mode === "edit") {
-        fetchTemplates();
+        setIsLoadingTemplates(true);
+        fetchTemplates().finally(() => setIsLoadingTemplates(false));
       }
       resetState();
     }
@@ -465,6 +473,7 @@ export default function TemplateModal({
   };
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       const response = await fetch(`/api/templates/${selectedTemplate.id}`, {
         method: "PUT",
@@ -478,7 +487,7 @@ export default function TemplateModal({
           globalJs,
         }),
       });
-
+  
       if (response.ok) {
         onClose();
       } else {
@@ -487,6 +496,8 @@ export default function TemplateModal({
     } catch (error) {
       console.error("Error updating template:", error);
       setError("Failed to update template. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -504,13 +515,21 @@ export default function TemplateModal({
       case 0:
         if (mode === "edit" && !selectedTemplate) {
           return (
-            <TemplateSelector
-              onSelect={handleTemplateSelect}
-              onClose={() => {
-                onClose();
-                resetState();
-              }}
-            />
+            <div>
+              {isLoadingTemplates ? (
+                <div className="flex justify-center items-center h-64">
+                  <Loader2 className="h-8 w-8 animate-spin text-[var(--accent-color)]" />
+                </div>
+              ) : (
+                <TemplateSelector
+                  onSelect={handleTemplateSelect}
+                  onClose={() => {
+                    onClose();
+                    resetState();
+                  }}
+                />
+              )}
+            </div>
           );
         } else if (mode === "edit" && selectedTemplate) {
           return (
@@ -520,11 +539,21 @@ export default function TemplateModal({
                   Editing: {selectedTemplate.name}
                 </h3>
                 <button
-                  onClick={handleSave}
-                  className="p-2 bg-[var(--accent-color)] text-[var(--bg-color)] rounded"
-                >
-                  Save Changes
-                </button>
+  onClick={handleSave}
+  disabled={isSaving}
+  className={`p-2 ${
+    isSaving ? 'bg-gray-400' : 'bg-[var(--accent-color)]'
+  } text-[var(--bg-color)] rounded flex items-center justify-center`}
+>
+  {isSaving ? (
+    <>
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      Saving...
+    </>
+  ) : (
+    'Save Changes'
+  )}
+</button>
               </div>
               <div className="flex space-x-4">
                 <div className="w-1/3 border-r pr-4">
@@ -647,17 +676,39 @@ export default function TemplateModal({
               </div>
               <div className="flex justify-between mt-4">
                 <button
-                  onClick={handleSave}
-                  className="p-2 bg-[var(--accent-color)] text-[var(--bg-color)] rounded"
-                >
-                  Save Changes
-                </button>
-                <button
-                  onClick={handleDeleteTemplate}
-                  className="p-2 bg-red-500 text-white rounded"
-                >
-                  Delete Template
-                </button>
+  onClick={handleSave}
+  disabled={isSaving}
+  className={`p-2 ${
+    isSaving ? 'bg-gray-400' : 'bg-[var(--accent-color)]'
+  } text-[var(--bg-color)] rounded flex items-center justify-center`}
+>
+  {isSaving ? (
+    <>
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      Saving...
+    </>
+  ) : (
+    'Save Changes'
+  )}
+</button>
+<button
+  onClick={handleDeleteTemplate}
+  disabled={isDeleting}
+  className={`p-2 ${
+    isDeleting ? 'bg-gray-400' : 'bg-red-500'
+  } text-white rounded flex items-center justify-center`}
+>
+  {isDeleting ? (
+    <>
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      Deleting...
+    </>
+  ) : (
+    <>
+      <Trash2 size={16} className="mr-2" /> Delete Template
+    </>
+  )}
+</button>
               </div>
             </div>
           );

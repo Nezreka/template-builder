@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from 'react'
 import { Dialog } from "@headlessui/react"
-import { X, Search } from 'lucide-react'
+import { X, Search, Loader2 } from 'lucide-react'
 
 interface TemplateSelectorModalProps {
   isOpen: boolean
   onClose: () => void
   sectionType: string
   onSelectTemplate: (templateName: string, templateContent: { html: string, css: string, js: string }) => void
+  isLoading?: boolean
 }
 
 interface Template {
@@ -21,7 +22,7 @@ interface Template {
   }>
 }
 
-export default function TemplateSelectorModal({ isOpen, onClose, sectionType, onSelectTemplate }: TemplateSelectorModalProps) {
+export default function TemplateSelectorModal({ isOpen, onClose, sectionType, onSelectTemplate, isLoading = false   }: TemplateSelectorModalProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +80,7 @@ export default function TemplateSelectorModal({ isOpen, onClose, sectionType, on
           <Dialog.Title className="text-2xl font-bold mb-6 text-[var(--accent-color)]">
             Select {sectionType} Template
           </Dialog.Title>
-
+  
           <div className="mb-6 relative">
             <input
               type="text"
@@ -93,28 +94,35 @@ export default function TemplateSelectorModal({ isOpen, onClose, sectionType, on
               size={20}
             />
           </div>
-
-          {loading && <p>Loading templates...</p>}
-          {error && <p className="text-red-500">{error}</p>}
-          
-          <div className="grid grid-cols-3 gap-4">
-            {filteredTemplates.map((template) => (
-              <div
-                key={template.id}
-                onClick={() => handleSelectTemplate(template)}
-                className="bg-[var(--secondary-color)] p-4 rounded cursor-pointer hover:bg-[var(--accent-color)] hover:text-[var(--bg-color)] transition-colors duration-200 flex items-center justify-center"
-              >
-                <h3 className="text-lg font-semibold text-center truncate">
-                  {template.name}
-                </h3>
+  
+          {isLoading || loading ? (
+            <div className="flex justify-center items-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-[var(--accent-color)]" />
+            </div>
+          ) : (
+            <>
+              {error && <p className="text-red-500 mb-4">{error}</p>}
+              
+              <div className="grid grid-cols-3 gap-4">
+                {filteredTemplates.map((template) => (
+                  <div
+                    key={template.id}
+                    onClick={() => handleSelectTemplate(template)}
+                    className="bg-[var(--secondary-color)] p-4 rounded cursor-pointer hover:bg-[var(--accent-color)] hover:text-[var(--bg-color)] transition-colors duration-200 flex items-center justify-center"
+                  >
+                    <h3 className="text-lg font-semibold text-center truncate">
+                      {template.name}
+                    </h3>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-
-          {!loading && filteredTemplates.length === 0 && (
-            <p className="text-center text-gray-400 mt-6">No templates found</p>
+  
+              {filteredTemplates.length === 0 && (
+                <p className="text-center text-gray-400 mt-6">No templates found</p>
+              )}
+            </>
           )}
-
+  
           <button
             onClick={onClose}
             className="absolute top-2 right-2 p-1 rounded-full hover:bg-[var(--secondary-color)]"
