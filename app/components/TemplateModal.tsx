@@ -15,7 +15,7 @@ import {
 import ParseTemplateModal from "./ParseTemplateModal";
 import ReactMarkdown from "react-markdown";
 import TemplateSelector from "./TemplateSelector";
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from "lucide-react";
 
 type ModalMode = "add" | "edit";
 
@@ -215,6 +215,7 @@ export default function TemplateModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [isLoadingTemplateDetails, setIsLoadingTemplateDetails] = useState(false);
 
   const resetState = () => {
     setSelectedTemplate(null);
@@ -229,22 +230,22 @@ export default function TemplateModal({
 
   const handleDeleteTemplate = async () => {
     if (!selectedTemplate) return;
-  
+
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this template? This action cannot be undone."
     );
     if (!confirmDelete) return;
-  
+
     setIsDeleting(true);
     try {
       const response = await fetch(`/api/templates/${selectedTemplate.id}`, {
         method: "DELETE",
       });
-  
+
       if (!response.ok) {
-        throw new Error('Failed to delete template');
+        throw new Error("Failed to delete template");
       }
-  
+
       onClose();
       // Optionally, you can call a function to refresh the template list
       // refreshTemplates();
@@ -389,6 +390,7 @@ export default function TemplateModal({
 
   const handleTemplateSelect = async (template) => {
     setSelectedTemplate(template);
+    setIsLoadingTemplateDetails(true);
     try {
       const response = await fetch(`/api/templates/${template.id}`);
       if (response.ok) {
@@ -421,6 +423,8 @@ export default function TemplateModal({
     } catch (error) {
       console.error("Error fetching template details:", error);
       setError("Failed to fetch template details. Please try again.");
+    } finally {
+      setIsLoadingTemplateDetails(false);
     }
   };
 
@@ -487,7 +491,7 @@ export default function TemplateModal({
           globalJs,
         }),
       });
-  
+
       if (response.ok) {
         onClose();
       } else {
@@ -539,120 +543,126 @@ export default function TemplateModal({
                   Editing: {selectedTemplate.name}
                 </h3>
                 <button
-  onClick={handleSave}
-  disabled={isSaving}
-  className={`p-2 ${
-    isSaving ? 'bg-gray-400' : 'bg-[var(--accent-color)]'
-  } text-[var(--bg-color)] rounded flex items-center justify-center`}
->
-  {isSaving ? (
-    <>
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      Saving...
-    </>
-  ) : (
-    'Save Changes'
-  )}
-</button>
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className={`p-2 ${
+                    isSaving ? "bg-gray-400" : "bg-[var(--accent-color)]"
+                  } text-[var(--bg-color)] rounded flex items-center justify-center`}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </button>
               </div>
-              <div className="flex space-x-4">
-                <div className="w-1/3 border-r pr-4">
-                  <h4 className="font-semibold mb-2">Sections:</h4>
-                  {sections.map((section, index) => (
-                    <button
-                      key={section.id}
-                      onClick={() => setSelectedSectionIndex(index)}
-                      className={`block w-full text-left p-2 mb-2 rounded ${
-                        selectedSectionIndex === index
-                          ? "bg-[var(--accent-color)] text-[var(--bg-color)]"
-                          : "hover:bg-[var(--secondary-color)]"
-                      }`}
-                    >
-                      {section.type || `Section ${index + 1}`}
-                    </button>
-                  ))}
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        const availableTypes = getAvailableSectionTypes();
-                        if (availableTypes.length > 0) {
-                          addSection(availableTypes[0]);
-                          setSelectedSectionIndex(sections.length);
-                        }
-                      }}
-                      className="w-full p-2 mt-4 bg-[var(--accent-color)] text-[var(--bg-color)] rounded"
-                      disabled={getAvailableSectionTypes().length === 0}
-                    >
-                      Add New Section
-                    </button>
-                    {getAvailableSectionTypes().length === 0 && (
-                      <p className="text-sm text-red-500 mt-2">
-                        All section types are in use
-                      </p>
-                    )}
+              {isLoadingTemplateDetails ? (
+                <div className="flex justify-center items-center h-64">
+                  <Loader2 className="h-8 w-8 animate-spin text-[var(--accent-color)]" />
+                </div>
+              ) : (
+                <div className="flex space-x-4">
+                  <div className="w-1/3 border-r pr-4">
+                    <h4 className="font-semibold mb-2">Sections:</h4>
+                    {sections.map((section, index) => (
+                      <button
+                        key={section.id}
+                        onClick={() => setSelectedSectionIndex(index)}
+                        className={`block w-full text-left p-2 mb-2 rounded ${
+                          selectedSectionIndex === index
+                            ? "bg-[var(--accent-color)] text-[var(--bg-color)]"
+                            : "hover:bg-[var(--secondary-color)]"
+                        }`}
+                      >
+                        {section.type || `Section ${index + 1}`}
+                      </button>
+                    ))}
+                    <div className="relative">
+                      <button
+                        onClick={() => {
+                          const availableTypes = getAvailableSectionTypes();
+                          if (availableTypes.length > 0) {
+                            addSection(availableTypes[0]);
+                            setSelectedSectionIndex(sections.length);
+                          }
+                        }}
+                        className="w-full p-2 mt-4 bg-[var(--accent-color)] text-[var(--bg-color)] rounded"
+                        disabled={getAvailableSectionTypes().length === 0}
+                      >
+                        Add New Section
+                      </button>
+                      {getAvailableSectionTypes().length === 0 && (
+                        <p className="text-sm text-red-500 mt-2">
+                          All section types are in use
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="w-2/3">
+                    {selectedSectionIndex !== null &&
+                      sections[selectedSectionIndex] && (
+                        <div>
+                          <h4 className="font-semibold mb-2">
+                            Editing:{" "}
+                            {sections[selectedSectionIndex].type ||
+                              `Section ${selectedSectionIndex + 1}`}
+                          </h4>
+                          <select
+                            value={sections[selectedSectionIndex].type}
+                            onChange={(e) =>
+                              handleSectionChange(
+                                selectedSectionIndex,
+                                "type",
+                                e.target.value
+                              )
+                            }
+                            className="w-full p-2 mb-4 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+                          >
+                            <option value="">Select section type</option>
+                            {getAvailableSectionTypes()
+                              .concat(sections[selectedSectionIndex].type)
+                              .map((type) => (
+                                <option key={type} value={type}>
+                                  {type}
+                                </option>
+                              ))}
+                          </select>
+                          {["html", "css", "js"].map((field) => (
+                            <div key={field} className="mb-4">
+                              <h5 className="font-semibold capitalize mb-2">
+                                {field}:
+                              </h5>
+                              <textarea
+                                value={
+                                  sections[selectedSectionIndex][field] || ""
+                                }
+                                onChange={(e) =>
+                                  handleSectionChange(
+                                    selectedSectionIndex,
+                                    field,
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full h-48 p-2 border rounded bg-[var(--secondary-color)] text-[var(--text-color)]"
+                              />
+                            </div>
+                          ))}
+                          <button
+                            onClick={() =>
+                              removeSection(sections[selectedSectionIndex].id)
+                            }
+                            className="p-2 bg-red-500 text-white rounded flex items-center"
+                          >
+                            <Trash2 size={16} className="mr-2" /> Delete Section
+                          </button>
+                        </div>
+                      )}
                   </div>
                 </div>
-                <div className="w-2/3">
-                  {selectedSectionIndex !== null &&
-                    sections[selectedSectionIndex] && (
-                      <div>
-                        <h4 className="font-semibold mb-2">
-                          Editing:{" "}
-                          {sections[selectedSectionIndex].type ||
-                            `Section ${selectedSectionIndex + 1}`}
-                        </h4>
-                        <select
-                          value={sections[selectedSectionIndex].type}
-                          onChange={(e) =>
-                            handleSectionChange(
-                              selectedSectionIndex,
-                              "type",
-                              e.target.value
-                            )
-                          }
-                          className="w-full p-2 mb-4 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-                        >
-                          <option value="">Select section type</option>
-                          {getAvailableSectionTypes()
-                            .concat(sections[selectedSectionIndex].type)
-                            .map((type) => (
-                              <option key={type} value={type}>
-                                {type}
-                              </option>
-                            ))}
-                        </select>
-                        {["html", "css", "js"].map((field) => (
-                          <div key={field} className="mb-4">
-                            <h5 className="font-semibold capitalize mb-2">
-                              {field}:
-                            </h5>
-                            <textarea
-                              value={
-                                sections[selectedSectionIndex][field] || ""
-                              }
-                              onChange={(e) =>
-                                handleSectionChange(
-                                  selectedSectionIndex,
-                                  field,
-                                  e.target.value
-                                )
-                              }
-                              className="w-full h-48 p-2 border rounded bg-[var(--secondary-color)] text-[var(--text-color)]"
-                            />
-                          </div>
-                        ))}
-                        <button
-                          onClick={() =>
-                            removeSection(sections[selectedSectionIndex].id)
-                          }
-                          className="p-2 bg-red-500 text-white rounded flex items-center"
-                        >
-                          <Trash2 size={16} className="mr-2" /> Delete Section
-                        </button>
-                      </div>
-                    )}
-                </div>
-              </div>
+              )}
               <div className="mt-8">
                 <h4 className="font-semibold mb-2">
                   Global Styles and Scripts
@@ -676,39 +686,39 @@ export default function TemplateModal({
               </div>
               <div className="flex justify-between mt-4">
                 <button
-  onClick={handleSave}
-  disabled={isSaving}
-  className={`p-2 ${
-    isSaving ? 'bg-gray-400' : 'bg-[var(--accent-color)]'
-  } text-[var(--bg-color)] rounded flex items-center justify-center`}
->
-  {isSaving ? (
-    <>
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      Saving...
-    </>
-  ) : (
-    'Save Changes'
-  )}
-</button>
-<button
-  onClick={handleDeleteTemplate}
-  disabled={isDeleting}
-  className={`p-2 ${
-    isDeleting ? 'bg-gray-400' : 'bg-red-500'
-  } text-white rounded flex items-center justify-center`}
->
-  {isDeleting ? (
-    <>
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      Deleting...
-    </>
-  ) : (
-    <>
-      <Trash2 size={16} className="mr-2" /> Delete Template
-    </>
-  )}
-</button>
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className={`p-2 ${
+                    isSaving ? "bg-gray-400" : "bg-[var(--accent-color)]"
+                  } text-[var(--bg-color)] rounded flex items-center justify-center`}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </button>
+                <button
+                  onClick={handleDeleteTemplate}
+                  disabled={isDeleting}
+                  className={`p-2 ${
+                    isDeleting ? "bg-gray-400" : "bg-red-500"
+                  } text-white rounded flex items-center justify-center`}
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={16} className="mr-2" /> Delete Template
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           );
