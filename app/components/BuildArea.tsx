@@ -2,8 +2,9 @@
 
 import { useDrop, useDrag } from 'react-dnd'
 import { useRef, useState, useCallback } from 'react'
-import { ChevronUp, ChevronDown, X, Crown } from 'lucide-react'
+import { ChevronUp, ChevronDown, X, Crown, Eye } from 'lucide-react'
 import TemplateSelectorModal from './TemplateSelectorModal'
+import LivePreviewModal from './LivePreviewModal'
 
 interface BuildAreaProps {
   template: SectionData[]
@@ -170,6 +171,10 @@ function TemplateItem({ item, index, reorderTemplate, templateLength, updateTemp
 }
 
 export default function BuildArea({ template, addToTemplate, removeFromTemplate, reorderTemplate, updateTemplateItem }: BuildAreaProps) {
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [globalCss, setGlobalCss] = useState('')
+  const [globalJs, setGlobalJs] = useState('')
+
   const [, drop] = useDrop(() => ({
     accept: ['option', 'templateItem'],
     drop: (item: { name: string, type: string }, monitor) => {
@@ -182,7 +187,16 @@ export default function BuildArea({ template, addToTemplate, removeFromTemplate,
 
   return (
     <div ref={drop} className="luxury-panel flex-1 p-8 overflow-hidden flex flex-col">
-      <h2 className="text-4xl font-bold mb-8 text-center text-[var(--accent-color)]">Template Builder</h2>
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-4xl font-bold text-[var(--accent-color)]">Template Builder</h2>
+        <button 
+          onClick={() => setIsPreviewOpen(true)}
+          className="luxury-button flex items-center"
+        >
+          <Eye size={20} className="mr-2" />
+          Live Preview
+        </button>
+      </div>
       <div className="luxury-panel bg-[var(--secondary-color)] p-6 flex-1 overflow-y-auto space-y-6">
         {template.map((item, index) => (
           <TemplateItem 
@@ -199,6 +213,28 @@ export default function BuildArea({ template, addToTemplate, removeFromTemplate,
           <p className="text-center text-xl text-gray-500 mt-8">Drag items here to build your template</p>
         )}
       </div>
+      <div className="mt-8">
+        <h4 className="font-semibold mb-2">Global Styles and Scripts</h4>
+        <textarea
+          value={globalCss}
+          onChange={(e) => setGlobalCss(e.target.value)}
+          placeholder="Global CSS"
+          className="w-full p-2 mb-4 h-24 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+        />
+        <textarea
+          value={globalJs}
+          onChange={(e) => setGlobalJs(e.target.value)}
+          placeholder="Global JavaScript"
+          className="w-full p-2 mb-4 h-24 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+        />
+      </div>
+      <LivePreviewModal 
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        template={template}
+        globalCss={globalCss}
+        globalJs={globalJs}
+      />
     </div>
   )
 }
