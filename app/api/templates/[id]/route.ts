@@ -56,135 +56,141 @@ export async function PUT(
   try {
     const { name, sections, globalCss, globalJs } = await request.json();
 
-    // Start a transaction
-    const updatedTemplate = await prisma.$transaction(async (prisma) => {
-      // First, delete existing relationships
-      await prisma.templateCssFile.deleteMany({
-        where: { templateId: params.id },
-      });
-      await prisma.templateJsFile.deleteMany({
-        where: { templateId: params.id },
-      });
-      await prisma.sectionCssFile.deleteMany({
-        where: { templateSection: { templateId: params.id } },
-      });
-      await prisma.sectionJsFile.deleteMany({
-        where: { templateSection: { templateId: params.id } },
-      });
-      await prisma.templateSection.deleteMany({
-        where: { templateId: params.id },
-      });
+    // Delete existing relationships
+    console.log("Deleting existing relationships...");
+    await prisma.templateCssFile.deleteMany({
+      where: { templateId: params.id },
+    });
+    await prisma.templateJsFile.deleteMany({
+      where: { templateId: params.id },
+    });
+    await prisma.sectionCssFile.deleteMany({
+      where: { templateSection: { templateId: params.id } },
+    });
+    await prisma.sectionJsFile.deleteMany({
+      where: { templateSection: { templateId: params.id } },
+    });
+    await prisma.templateSection.deleteMany({
+      where: { templateId: params.id },
+    });
 
-      // Now update the template with new data
-      return await prisma.template.update({
-        where: { id: params.id },
-        data: {
-          name,
-          sections: {
-            create: await Promise.all(
-              sections.map(async (section: any, index: number) => {
-                let sectionEntity = await prisma.section.findFirst({
-                  where: { name: section.type },
-                });
+    console.log("Preparing section data...");
+    const sectionData = await Promise.all(
+      sections.map(async (section: any, index: number) => {
+        let sectionEntity = await prisma.section.findFirst({
+          where: { name: section.type },
+        });
 
-                if (!sectionEntity) {
-                  sectionEntity = await prisma.section.create({
-                    data: { name: section.type },
-                  });
-                }
+        if (!sectionEntity) {
+          sectionEntity = await prisma.section.create({
+            data: { name: section.type },
+          });
+        }
 
-                return {
-                  order: index,
-                  htmlContent: section.html,
-                  section: { connect: { id: sectionEntity.id } },
-                  css: {
-                    create: section.css
-                      ? [
-                          {
-                            cssFile: {
-                              create: {
-                                filename: `${
-                                  section.type || `Section ${index + 1}`
-                                }_${index}.css`,
-                                content: Array.isArray(section.css)
-                                  ? ""
-                                  : section.css || "",
-                              },
-                            },
-                          },
-                        ]
-                      : [],
-                  },
-                  js: {
-                    create: section.js
-                      ? [
-                          {
-                            jsFile: {
-                              create: {
-                                filename: `${
-                                  section.type || `Section ${index + 1}`
-                                }_${index}.js`,
-                                content: Array.isArray(section.js)
-                                  ? ""
-                                  : section.js || "",
-                              },
-                            },
-                          },
-                        ]
-                      : [],
-                  },
-                };
-              })
-            ),
-          },
-          globalCss: {
-            create: globalCss
+        return {
+          order: index,
+          htmlContent: section.html,
+          section: { connect: { id: sectionEntity.id } },
+          css: {
+            create: section.css
               ? [
                   {
                     cssFile: {
                       create: {
-                        filename: "global.css",
-                        content: Array.isArray(globalCss)
+                        filename: `${
+                          section.type || `Section ${index + 1}`
+                        }_${index}.css`,
+                        content: Array.isArray(section.css)
                           ? ""
-                          : globalCss || "",
+                          : section.css || "",
                       },
                     },
                   },
                 ]
               : [],
           },
-          globalJs: {
-            create: globalJs
+          js: {
+            create: section.js
               ? [
                   {
                     jsFile: {
                       create: {
-                        filename: "global.js",
-                        content: Array.isArray(globalJs) ? "" : globalJs || "",
+                        filename: `${
+                          section.type || `Section ${index + 1}`
+                        }_${index}.js`,
+                        content: Array.isArray(section.js)
+                          ? ""
+                          : section.js || "",
                       },
                     },
                   },
                 ]
               : [],
           },
+        };
+      })
+    );
+
+    console.log("Updating template...");
+    const updatedTemplate = await prisma.template.update({
+      where: { id: params.id },
+      data: {
+        name,
+        sections: {
+          create: sectionData,
         },
-        include: {
-          sections: {
-            include: {
-              section: true,
-              css: { include: { cssFile: true } },
-              js: { include: { jsFile: true } },
-            },
+        globalCss: {
+          create: globalCss
+            ? [
+                {
+                  cssFile: {
+                    create: {
+                      filename: "global.css",
+                      content: Array.isArray(globalCss)
+                        ? ""
+                        : globalCss || "",
+                    },
+                  },
+                },
+              ]
+            : [],
+        },
+        globalJs: {
+          create: globalJs
+            ? [
+                {
+                  jsFile: {
+                    create: {
+                      filename: "global.js",
+                      content: Array.isArray(globalJs) ? "" : globalJs || "",
+                    },
+                  },
+                },
+              ]
+            : [],
+        },
+      },
+      include: {
+        sections: {
+          include: {
+            section: true,
+            css: { include: { cssFile: true } },
+            js: { include: { jsFile: true } },
           },
-          globalCss: { include: { cssFile: true } },
-          globalJs: { include: { jsFile: true } },
         },
-      });
+        globalCss: { include: { cssFile: true } },
+        globalJs: { include: { jsFile: true } },
+      },
     });
 
+    console.log("Template updated successfully");
     return NextResponse.json(updatedTemplate);
   } catch (error) {
     console.error("Failed to update template:", error);
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
     return NextResponse.json(
       { error: "Failed to update template", details: error.message },
       { status: 500 }

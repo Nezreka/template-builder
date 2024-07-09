@@ -216,6 +216,7 @@ export default function TemplateModal({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isLoadingTemplateDetails, setIsLoadingTemplateDetails] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const resetState = () => {
     setSelectedTemplate(null);
@@ -437,13 +438,14 @@ export default function TemplateModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (await validateStep()) {
+      setIsCreating(true);
       try {
         const url =
           mode === "edit" && selectedTemplate
             ? `/api/templates/${selectedTemplate.id}`
             : "/api/templates";
         const method = mode === "edit" ? "PUT" : "POST";
-
+  
         const response = await fetch(url, {
           method: method,
           headers: {
@@ -455,23 +457,25 @@ export default function TemplateModal({
               type: section.type,
               html: section.html,
               css: section.css,
-              js: section.js, // Make sure this is included
+              js: section.js,
             })),
             globalCss,
             globalJs,
           }),
         });
-
+  
         if (!response.ok) {
           throw new Error(`Failed to ${mode} template`);
         }
-
+  
         const data = await response.json();
         console.log(`Template ${mode}d:`, data);
         onClose();
       } catch (error) {
         console.error(`Error ${mode}ing template:`, error);
         setError(`Failed to ${mode} template. Please try again.`);
+      } finally {
+        setIsCreating(false);
       }
     }
   };
@@ -865,25 +869,38 @@ export default function TemplateModal({
       case 3:
         return (
           <div>
-            <h3 className="text-lg mb-2 text-[var(--accent-color)]">
-              Global Styles and Scripts
-            </h3>
-            <textarea
-              value={globalCss}
-              onChange={(e) => setGlobalCss(e.target.value)}
-              placeholder="Global CSS"
-              className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-            />
-            <textarea
-              value={globalJs}
-              onChange={(e) => setGlobalJs(e.target.value)}
-              placeholder="Global JavaScript"
-              className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-            />
-            <button onClick={handleSubmit} className="luxury-button">
-              {mode === "add" ? "Create Template" : "Update Template"}
-            </button>
-          </div>
+      <h3 className="text-lg mb-2 text-[var(--accent-color)]">
+        Global Styles and Scripts
+      </h3>
+      <textarea
+        value={globalCss}
+        onChange={(e) => setGlobalCss(e.target.value)}
+        placeholder="Global CSS"
+        className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+      />
+      <textarea
+        value={globalJs}
+        onChange={(e) => setGlobalJs(e.target.value)}
+        placeholder="Global JavaScript"
+        className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+      />
+      <button
+        onClick={handleSubmit}
+        disabled={isCreating}
+        className={`luxury-button ${
+          isCreating ? 'opacity-50 cursor-not-allowed' : ''
+        } flex items-center justify-center`}
+      >
+        {isCreating ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {mode === "add" ? "Creating..." : "Updating..."}
+          </>
+        ) : (
+          mode === "add" ? "Create Template" : "Update Template"
+        )}
+      </button>
+    </div>
         );
       default:
         return null;
