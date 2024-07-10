@@ -8,7 +8,13 @@ interface TemplateSelectorModalProps {
   isOpen: boolean
   onClose: () => void
   sectionType: string
-  onSelectTemplate: (templateName: string, templateContent: { html: string, css: string, js: string }) => void
+  onSelectTemplate: (templateName: string, templateContent: { 
+    html: string, 
+    css: string, 
+    js: string,
+    globalCss?: string,
+    globalJs?: string
+  }) => void
   isLoading?: boolean
 }
 
@@ -20,9 +26,11 @@ interface Template {
     css: Array<{ cssFile: { content: string } }>
     js: Array<{ jsFile: { content: string } }>
   }>
+  globalCss?: Array<{ cssFile: { content: string } }>
+  globalJs?: Array<{ jsFile: { content: string } }>
 }
 
-export default function TemplateSelectorModal({ isOpen, onClose, sectionType, onSelectTemplate, isLoading = false   }: TemplateSelectorModalProps) {
+export default function TemplateSelectorModal({ isOpen, onClose, sectionType, onSelectTemplate, isLoading = false }: TemplateSelectorModalProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,11 +65,15 @@ export default function TemplateSelectorModal({ isOpen, onClose, sectionType, on
     const htmlContent = section.htmlContent;
     const cssContent = section.css[0]?.cssFile.content || '';
     const jsContent = section.js[0]?.jsFile.content || '';
+    const globalCssContent = template.globalCss?.[0]?.cssFile?.content || '';
+    const globalJsContent = template.globalJs?.[0]?.jsFile?.content || '';
 
     onSelectTemplate(template.name, {
       html: htmlContent,
       css: cssContent,
-      js: jsContent
+      js: jsContent,
+      globalCss: globalCssContent,
+      globalJs: globalJsContent
     });
     onClose();
   };

@@ -33,6 +33,9 @@ export async function GET(
       );
     }
 
+    // Log the fetched template data
+    console.log('Fetched template data:', JSON.stringify(template, null, 2));
+
     // Capitalize the template name
     const capitalizedTemplate = {
       ...template,

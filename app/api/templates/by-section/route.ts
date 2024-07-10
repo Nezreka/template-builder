@@ -45,15 +45,21 @@ export async function GET(req: Request) {
               }
             }
           }
-        }
+        },
+        globalCss: { include: { cssFile: true } },
+        globalJs: { include: { jsFile: true } }
       }
     });
 
-    // Capitalize template names
-    const capitalizedTemplates = templates.map(template => ({
-      ...template,
-      name: capitalizeWords(template.name)
-    }));
+    // Capitalize template names and log the data
+    const capitalizedTemplates = templates.map(template => {
+      const capitalizedTemplate = {
+        ...template,
+        name: capitalizeWords(template.name)
+      };
+      console.log('Fetched template:', JSON.stringify(capitalizedTemplate, null, 2));
+      return capitalizedTemplate;
+    });
 
     return NextResponse.json(capitalizedTemplates);
   } catch (error) {
