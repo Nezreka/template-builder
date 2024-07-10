@@ -2,9 +2,11 @@
 
 import { useDrop, useDrag } from "react-dnd";
 import { useRef, useState, useCallback, useEffect } from "react";
-import { ChevronUp, ChevronDown, X, Crown, Eye } from "lucide-react";
+import { ChevronUp, ChevronDown, X, Crown, Eye, Download } from "lucide-react";
 import TemplateSelectorModal from "./TemplateSelectorModal";
 import LivePreviewModal from "./LivePreviewModal";
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 interface BuildAreaProps {
   template: SectionData[];
@@ -228,7 +230,12 @@ export default function BuildArea({
     globalCss: "",
     globalJs: "",
   });
-  
+  const [hasSelectedTemplate, setHasSelectedTemplate] = useState(false);
+  useEffect(() => {
+    // Check if any section has a selected template
+    const anyTemplateSelected = template.some(section => section.selectedTemplate);
+    setHasSelectedTemplate(anyTemplateSelected);
+  }, [template]);
 
   const getCombinedGlobals = useCallback(() => {
     let combinedCss = manualGlobalCss;
@@ -243,8 +250,6 @@ export default function BuildArea({
       }
     });
 
-    
-
     return { globalCss: combinedCss, globalJs: combinedJs };
   }, [template, manualGlobalCss, manualGlobalJs]);
 
@@ -253,6 +258,8 @@ export default function BuildArea({
     
     setCombinedGlobals(globals);
   }, [template, manualGlobalCss, manualGlobalJs, getCombinedGlobals]);
+
+  
 
   const openPreview = () => {
     const globals = getCombinedGlobals();
@@ -274,6 +281,59 @@ export default function BuildArea({
     [addToTemplate]
   );
 
+  const generateHTML = () => {
+    const sections = template
+      .filter(section => section.content)
+      .map(section => section.content?.html || '')
+      .join('\n');
+  
+    return `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Template</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="home">
+    <div class="cy-custom">
+      ${sections}
+    </div>
+    <script src="script.js"></script>
+  </body>
+  </html>
+    `.trim();
+  };
+
+  const generateCSS = () => {
+    const sectionCSS = template
+      .filter(section => section.content)
+      .map(section => section.content?.css || '')
+      .join('\n\n');
+
+    return `${combinedGlobals.globalCss}\n\n${sectionCSS}`.trim();
+  };
+
+  const generateJS = () => {
+    const sectionJS = template
+      .filter(section => section.content)
+      .map(section => section.content?.js || '')
+      .join('\n\n');
+
+    return `${combinedGlobals.globalJs}\n\n${sectionJS}`.trim();
+  };
+
+  const downloadZip = async () => {
+    const zip = new JSZip();
+    zip.file('index.html', generateHTML());
+    zip.file('styles.css', generateCSS());
+    zip.file('script.js', generateJS());
+    
+    const content = await zip.generateAsync({ type: 'blob' });
+    saveAs(content, 'template.zip');
+  };
+
   return (
     <div
       ref={drop}
@@ -283,13 +343,23 @@ export default function BuildArea({
         <h2 className="text-4xl font-bold text-[var(--accent-color)]">
           Template Builder
         </h2>
-        <button
-          onClick={() => setIsPreviewOpen(true)}
-          className="luxury-button flex items-center"
-        >
-          <Eye size={20} className="mr-2" />
-          Live Preview
-        </button>
+        <div className="flex items-center">
+          <button
+            onClick={() => setIsPreviewOpen(true)}
+            className="luxury-button flex items-center mr-4"
+          >
+            <Eye size={20} className="mr-2" />
+            Live Preview
+          </button>
+          <button
+            onClick={downloadZip}
+            className={`luxury-button flex items-center ${!hasSelectedTemplate && 'opacity-50 cursor-not-allowed'}`}
+            title={hasSelectedTemplate ? "Download Template" : "Select a template for at least one section to enable download"}
+            disabled={!hasSelectedTemplate}
+          >
+            <Download size={20} />
+          </button>
+        </div>
       </div>
       <div className="luxury-panel bg-[var(--secondary-color)] p-6 flex-1 overflow-y-auto space-y-6">
         {template.map((item, index) => (
@@ -321,15 +391,15 @@ export default function BuildArea({
             Additional Global CSS
           </label>
           <textarea
-  id="globalCss"
-  value={manualGlobalCss}
-  onChange={(e) => {
-    setManualGlobalCss(e.target.value)
-    console.log('Manual Global CSS updated:', e.target.value)
-  }}
-  placeholder="Add additional global CSS here"
-  className="w-full p-2 h-32 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)] resize-y"
-/>
+            id="globalCss"
+            value={manualGlobalCss}
+            onChange={(e) => {
+              setManualGlobalCss(e.target.value)
+              console.log('Manual Global CSS updated:', e.target.value)
+            }}
+            placeholder="Add additional global CSS here"
+            className="w-full p-2 h-32 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)] resize-y"
+          />
         </div>
         <div className="mb-4">
           <label
@@ -339,15 +409,15 @@ export default function BuildArea({
             Additional Global JavaScript
           </label>
           <textarea
-  id="globalJs"
-  value={manualGlobalJs}
-  onChange={(e) => {
-    setManualGlobalJs(e.target.value)
-    console.log('Manual Global JS updated:', e.target.value)
-  }}
-  placeholder="Add additional global JavaScript here"
-  className="w-full p-2 h-32 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)] resize-y"
-/>
+            id="globalJs"
+            value={manualGlobalJs}
+            onChange={(e) => {
+              setManualGlobalJs(e.target.value)
+              console.log('Manual Global JS updated:', e.target.value)
+            }}
+            placeholder="Add additional global JavaScript here"
+            className="w-full p-2 h-32 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)] resize-y"
+          />
         </div>
       </div>
 
