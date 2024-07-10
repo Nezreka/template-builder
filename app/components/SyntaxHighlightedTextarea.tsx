@@ -21,10 +21,26 @@ const SyntaxHighlightedTextarea: React.FC<SyntaxHighlightedTextareaProps> = ({ v
   }, [value, language]);
 
   const updateHighlightedCode = (text: string) => {
+    if (typeof text !== 'string') {
+      console.error('Invalid input: text is not a string', text);
+      text = String(text); // Convert to string if it's not already
+    }
+
     if (text[text.length - 1] === "\n") {
       text += " ";
     }
-    setHighlightedCode(Prism.highlight(text, Prism.languages[language], language));
+
+    try {
+      const highlighted = Prism.highlight(
+        text,
+        Prism.languages[language] || Prism.languages.plain,
+        language
+      );
+      setHighlightedCode(highlighted);
+    } catch (error) {
+      console.error('Error highlighting code:', error);
+      setHighlightedCode(text); // Fallback to plain text if highlighting fails
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -60,7 +76,7 @@ const SyntaxHighlightedTextarea: React.FC<SyntaxHighlightedTextareaProps> = ({ v
     <div className="syntax-highlight-wrapper" style={{ position: 'relative', height: '200px', marginBottom: '1rem' }}>
       <textarea
         ref={textareaRef}
-        value={value}
+        value={value || ''} // Ensure value is always a string
         onChange={handleChange}
         onScroll={syncScroll}
         onKeyDown={handleTab}
