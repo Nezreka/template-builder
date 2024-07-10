@@ -7,6 +7,8 @@ import TemplateSelectorModal from "./TemplateSelectorModal";
 import LivePreviewModal from "./LivePreviewModal";
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import SyntaxHighlightedTextarea from './SyntaxHighlightedTextarea';
+
 
 interface BuildAreaProps {
   template: SectionData[];
@@ -390,15 +392,13 @@ export default function BuildArea({
           >
             Additional Global CSS
           </label>
-          <textarea
-            id="globalCss"
+          <SyntaxHighlightedTextarea
             value={manualGlobalCss}
-            onChange={(e) => {
-              setManualGlobalCss(e.target.value)
-              console.log('Manual Global CSS updated:', e.target.value)
+            onChange={(value) => {
+              setManualGlobalCss(value);
+              console.log('Manual Global CSS updated:', value);
             }}
-            placeholder="Add additional global CSS here"
-            className="w-full p-2 h-32 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)] resize-y"
+            language="css"
           />
         </div>
         <div className="mb-4">
@@ -408,15 +408,13 @@ export default function BuildArea({
           >
             Additional Global JavaScript
           </label>
-          <textarea
-            id="globalJs"
+          <SyntaxHighlightedTextarea
             value={manualGlobalJs}
-            onChange={(e) => {
-              setManualGlobalJs(e.target.value)
-              console.log('Manual Global JS updated:', e.target.value)
+            onChange={(value) => {
+              setManualGlobalJs(value);
+              console.log('Manual Global JS updated:', value);
             }}
-            placeholder="Add additional global JavaScript here"
-            className="w-full p-2 h-32 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)] resize-y"
+            language="javascript"
           />
         </div>
       </div>

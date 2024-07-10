@@ -16,6 +16,7 @@ import ParseTemplateModal from "./ParseTemplateModal";
 import ReactMarkdown from "react-markdown";
 import TemplateSelector from "./TemplateSelector";
 import { Loader2 } from "lucide-react";
+import SyntaxHighlightedTextarea from './SyntaxHighlightedTextarea';
 
 type ModalMode = "add" | "edit";
 
@@ -635,25 +636,17 @@ export default function TemplateModal({
                               ))}
                           </select>
                           {["html", "css", "js"].map((field) => (
-                            <div key={field} className="mb-4">
-                              <h5 className="font-semibold capitalize mb-2">
-                                {field}:
-                              </h5>
-                              <textarea
-                                value={
-                                  sections[selectedSectionIndex][field] || ""
-                                }
-                                onChange={(e) =>
-                                  handleSectionChange(
-                                    selectedSectionIndex,
-                                    field,
-                                    e.target.value
-                                  )
-                                }
-                                className="w-full h-48 p-2 border rounded bg-[var(--secondary-color)] text-[var(--text-color)]"
-                              />
-                            </div>
-                          ))}
+  <div key={field} className="mb-4">
+    <h5 className="font-semibold capitalize mb-2">
+      {field}:
+    </h5>
+    <SyntaxHighlightedTextarea
+      value={sections[selectedSectionIndex][field] || ""}
+      onChange={(value) => handleSectionChange(selectedSectionIndex, field, value)}
+      language={field === 'html' ? 'markup' : field}
+    />
+  </div>
+))}
                           <button
                             onClick={() =>
                               removeSection(sections[selectedSectionIndex].id)
@@ -668,26 +661,26 @@ export default function TemplateModal({
                 </div>
               )}
               <div className="mt-8">
-                <h4 className="font-semibold mb-2">
-                  Global Styles and Scripts
-                </h4>
-                <div className="mb-4">
-                  <h5 className="font-semibold mb-2">Global CSS:</h5>
-                  <textarea
-                    value={globalCss}
-                    onChange={(e) => setGlobalCss(e.target.value)}
-                    className="w-full h-48 p-2 border rounded bg-[var(--secondary-color)] text-[var(--text-color)]"
-                  />
-                </div>
-                <div className="mb-4">
-                  <h5 className="font-semibold mb-2">Global JavaScript:</h5>
-                  <textarea
-                    value={globalJs}
-                    onChange={(e) => setGlobalJs(e.target.value)}
-                    className="w-full h-48 p-2 border rounded bg-[var(--secondary-color)] text-[var(--text-color)]"
-                  />
-                </div>
-              </div>
+  <h4 className="font-semibold mb-2">
+    Global Styles and Scripts
+  </h4>
+  <div className="mb-4">
+    <h5 className="font-semibold mb-2">Global CSS:</h5>
+    <SyntaxHighlightedTextarea
+      value={globalCss}
+      onChange={setGlobalCss}
+      language="css"
+    />
+  </div>
+  <div className="mb-4">
+    <h5 className="font-semibold mb-2">Global JavaScript:</h5>
+    <SyntaxHighlightedTextarea
+      value={globalJs}
+      onChange={setGlobalJs}
+      language="javascript"
+    />
+  </div>
+</div>
               <div className="flex justify-between mt-4">
                 <button
                   onClick={handleSave}
@@ -839,20 +832,17 @@ export default function TemplateModal({
                   ))}
                 </select>
                 {["html", "css", "js"].map((field) => (
-                  <div key={field} className="mb-2">
-                    <h5 className="font-semibold capitalize">{field}:</h5>
-                    <ReactMarkdown>{section[field]}</ReactMarkdown>
-                    <textarea
-                      value={section[field]}
-                      onChange={(e) => {
-                        const newSections = [...sections];
-                        newSections[index][field] = e.target.value;
-                        setSections(newSections);
-                      }}
-                      className="w-full p-2 mb-2 h-24 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-                    />
-                  </div>
-                ))}
+  <div key={field} className="mb-4">
+    <h5 className="font-semibold capitalize mb-2">
+      {field}:
+    </h5>
+    <SyntaxHighlightedTextarea
+      value={sections[selectedSectionIndex][field] || ""}
+      onChange={(value) => handleSectionChange(selectedSectionIndex, field, value)}
+      language={field === 'html' ? 'markup' : field}
+    />
+  </div>
+))}
                 <button
                   onClick={() => removeSection(section.id)}
                   className="mt-2 p-2 bg-red-500 text-white rounded flex items-center"
