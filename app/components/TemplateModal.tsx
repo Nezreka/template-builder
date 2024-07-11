@@ -16,7 +16,7 @@ import ParseTemplateModal from "./ParseTemplateModal";
 import ReactMarkdown from "react-markdown";
 import TemplateSelector from "./TemplateSelector";
 import { Loader2 } from "lucide-react";
-import SyntaxHighlightedTextarea from './SyntaxHighlightedTextarea';
+import SyntaxHighlightedTextarea from "./SyntaxHighlightedTextarea";
 
 type ModalMode = "add" | "edit";
 
@@ -216,7 +216,8 @@ export default function TemplateModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
-  const [isLoadingTemplateDetails, setIsLoadingTemplateDetails] = useState(false);
+  const [isLoadingTemplateDetails, setIsLoadingTemplateDetails] =
+    useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   const resetState = () => {
@@ -446,7 +447,7 @@ export default function TemplateModal({
             ? `/api/templates/${selectedTemplate.id}`
             : "/api/templates";
         const method = mode === "edit" ? "PUT" : "POST";
-  
+
         const response = await fetch(url, {
           method: method,
           headers: {
@@ -464,11 +465,11 @@ export default function TemplateModal({
             globalJs,
           }),
         });
-  
+
         if (!response.ok) {
           throw new Error(`Failed to ${mode} template`);
         }
-  
+
         const data = await response.json();
         console.log(`Template ${mode}d:`, data);
         onClose();
@@ -636,17 +637,25 @@ export default function TemplateModal({
                               ))}
                           </select>
                           {["html", "css", "js"].map((field) => (
-  <div key={field} className="mb-4">
-    <h5 className="font-semibold capitalize mb-2">
-      {field}:
-    </h5>
-    <SyntaxHighlightedTextarea
-      value={sections[selectedSectionIndex][field] || ""}
-      onChange={(value) => handleSectionChange(selectedSectionIndex, field, value)}
-      language={field === 'html' ? 'markup' : field}
-    />
-  </div>
-))}
+                            <div key={field} className="mb-4">
+                              <h5 className="font-semibold capitalize mb-2">
+                                {field}:
+                              </h5>
+                              <SyntaxHighlightedTextarea
+                                value={
+                                  sections[selectedSectionIndex][field] || ""
+                                }
+                                onChange={(value) =>
+                                  handleSectionChange(
+                                    selectedSectionIndex,
+                                    field,
+                                    value
+                                  )
+                                }
+                                language={field === "html" ? "markup" : field}
+                              />
+                            </div>
+                          ))}
                           <button
                             onClick={() =>
                               removeSection(sections[selectedSectionIndex].id)
@@ -661,26 +670,26 @@ export default function TemplateModal({
                 </div>
               )}
               <div className="mt-8">
-  <h4 className="font-semibold mb-2">
-    Global Styles and Scripts
-  </h4>
-  <div className="mb-4">
-    <h5 className="font-semibold mb-2">Global CSS:</h5>
-    <SyntaxHighlightedTextarea
-      value={globalCss}
-      onChange={setGlobalCss}
-      language="css"
-    />
-  </div>
-  <div className="mb-4">
-    <h5 className="font-semibold mb-2">Global JavaScript:</h5>
-    <SyntaxHighlightedTextarea
-      value={globalJs}
-      onChange={setGlobalJs}
-      language="javascript"
-    />
-  </div>
-</div>
+                <h4 className="font-semibold mb-2">
+                  Global Styles and Scripts
+                </h4>
+                <div className="mb-4">
+                  <h5 className="font-semibold mb-2">Global CSS:</h5>
+                  <SyntaxHighlightedTextarea
+                    value={globalCss}
+                    onChange={setGlobalCss}
+                    language="css"
+                  />
+                </div>
+                <div className="mb-4">
+                  <h5 className="font-semibold mb-2">Global JavaScript:</h5>
+                  <SyntaxHighlightedTextarea
+                    value={globalJs}
+                    onChange={setGlobalJs}
+                    language="javascript"
+                  />
+                </div>
+              </div>
               <div className="flex justify-between mt-4">
                 <button
                   onClick={handleSave}
@@ -832,17 +841,17 @@ export default function TemplateModal({
                   ))}
                 </select>
                 {["html", "css", "js"].map((field) => (
-  <div key={field} className="mb-4">
-    <h5 className="font-semibold capitalize mb-2">
-      {field}:
-    </h5>
-    <SyntaxHighlightedTextarea
-      value={sections[selectedSectionIndex][field] || ""}
-      onChange={(value) => handleSectionChange(selectedSectionIndex, field, value)}
-      language={field === 'html' ? 'markup' : field}
-    />
-  </div>
-))}
+                  <div key={field} className="mb-4">
+                    <h5 className="font-semibold capitalize mb-2">{field}:</h5>
+                    <SyntaxHighlightedTextarea
+                      value={sections[selectedSectionIndex][field] || ""}
+                      onChange={(value) =>
+                        handleSectionChange(selectedSectionIndex, field, value)
+                      }
+                      language={field === "html" ? "markup" : field}
+                    />
+                  </div>
+                ))}
                 <button
                   onClick={() => removeSection(section.id)}
                   className="mt-2 p-2 bg-red-500 text-white rounded flex items-center"
@@ -859,38 +868,40 @@ export default function TemplateModal({
       case 3:
         return (
           <div>
-      <h3 className="text-lg mb-2 text-[var(--accent-color)]">
-        Global Styles and Scripts
-      </h3>
-      <textarea
-        value={globalCss}
-        onChange={(e) => setGlobalCss(e.target.value)}
-        placeholder="Global CSS"
-        className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-      />
-      <textarea
-        value={globalJs}
-        onChange={(e) => setGlobalJs(e.target.value)}
-        placeholder="Global JavaScript"
-        className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
-      />
-      <button
-        onClick={handleSubmit}
-        disabled={isCreating}
-        className={`luxury-button ${
-          isCreating ? 'opacity-50 cursor-not-allowed' : ''
-        } flex items-center justify-center`}
-      >
-        {isCreating ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            {mode === "add" ? "Creating..." : "Updating..."}
-          </>
-        ) : (
-          mode === "add" ? "Create Template" : "Update Template"
-        )}
-      </button>
-    </div>
+            <h3 className="text-lg mb-2 text-[var(--accent-color)]">
+              Global Styles and Scripts
+            </h3>
+            <textarea
+              value={globalCss}
+              onChange={(e) => setGlobalCss(e.target.value)}
+              placeholder="Global CSS"
+              className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+            />
+            <textarea
+              value={globalJs}
+              onChange={(e) => setGlobalJs(e.target.value)}
+              placeholder="Global JavaScript"
+              className="w-full p-2 mb-4 h-48 bg-[var(--secondary-color)] border border-[var(--accent-color)] rounded text-[var(--text-color)]"
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={isCreating}
+              className={`luxury-button ${
+                isCreating ? "opacity-50 cursor-not-allowed" : ""
+              } flex items-center justify-center`}
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {mode === "add" ? "Creating..." : "Updating..."}
+                </>
+              ) : mode === "add" ? (
+                "Create Template"
+              ) : (
+                "Update Template"
+              )}
+            </button>
+          </div>
         );
       default:
         return null;

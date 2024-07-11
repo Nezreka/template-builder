@@ -5,10 +5,9 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { ChevronUp, ChevronDown, X, Crown, Eye, Download } from "lucide-react";
 import TemplateSelectorModal from "./TemplateSelectorModal";
 import LivePreviewModal from "./LivePreviewModal";
-import JSZip from 'jszip';
-import { saveAs } from 'file-saver';
-import SyntaxHighlightedTextarea from './SyntaxHighlightedTextarea';
-
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
+import SyntaxHighlightedTextarea from "./SyntaxHighlightedTextarea";
 
 interface BuildAreaProps {
   template: SectionData[];
@@ -235,7 +234,9 @@ export default function BuildArea({
   const [hasSelectedTemplate, setHasSelectedTemplate] = useState(false);
   useEffect(() => {
     // Check if any section has a selected template
-    const anyTemplateSelected = template.some(section => section.selectedTemplate);
+    const anyTemplateSelected = template.some(
+      (section) => section.selectedTemplate
+    );
     setHasSelectedTemplate(anyTemplateSelected);
   }, [template]);
 
@@ -243,12 +244,12 @@ export default function BuildArea({
     let combinedCss = manualGlobalCss;
     let combinedJs = manualGlobalJs;
 
-    template.forEach(section => {
+    template.forEach((section) => {
       if (section.content?.globalCss) {
-        combinedCss += '\n' + section.content.globalCss;
+        combinedCss += "\n" + section.content.globalCss;
       }
       if (section.content?.globalJs) {
-        combinedJs += '\n' + section.content.globalJs;
+        combinedJs += "\n" + section.content.globalJs;
       }
     });
 
@@ -257,15 +258,13 @@ export default function BuildArea({
 
   useEffect(() => {
     const globals = getCombinedGlobals();
-    
+
     setCombinedGlobals(globals);
   }, [template, manualGlobalCss, manualGlobalJs, getCombinedGlobals]);
 
-  
-
   const openPreview = () => {
     const globals = getCombinedGlobals();
-    
+
     setCombinedGlobals(globals);
     setIsPreviewOpen(true);
   };
@@ -285,10 +284,10 @@ export default function BuildArea({
 
   const generateHTML = () => {
     const sections = template
-      .filter(section => section.content)
-      .map(section => section.content?.html || '')
-      .join('\n');
-  
+      .filter((section) => section.content)
+      .map((section) => section.content?.html || "")
+      .join("\n");
+
     return `
   <!DOCTYPE html>
   <html lang="en">
@@ -310,30 +309,30 @@ export default function BuildArea({
 
   const generateCSS = () => {
     const sectionCSS = template
-      .filter(section => section.content)
-      .map(section => section.content?.css || '')
-      .join('\n\n');
+      .filter((section) => section.content)
+      .map((section) => section.content?.css || "")
+      .join("\n\n");
 
     return `${combinedGlobals.globalCss}\n\n${sectionCSS}`.trim();
   };
 
   const generateJS = () => {
     const sectionJS = template
-      .filter(section => section.content)
-      .map(section => section.content?.js || '')
-      .join('\n\n');
+      .filter((section) => section.content)
+      .map((section) => section.content?.js || "")
+      .join("\n\n");
 
     return `${combinedGlobals.globalJs}\n\n${sectionJS}`.trim();
   };
 
   const downloadZip = async () => {
     const zip = new JSZip();
-    zip.file('index.html', generateHTML());
-    zip.file('styles.css', generateCSS());
-    zip.file('script.js', generateJS());
-    
-    const content = await zip.generateAsync({ type: 'blob' });
-    saveAs(content, 'template.zip');
+    zip.file("index.html", generateHTML());
+    zip.file("styles.css", generateCSS());
+    zip.file("script.js", generateJS());
+
+    const content = await zip.generateAsync({ type: "blob" });
+    saveAs(content, "template.zip");
   };
 
   return (
@@ -355,8 +354,14 @@ export default function BuildArea({
           </button>
           <button
             onClick={downloadZip}
-            className={`luxury-button flex items-center ${!hasSelectedTemplate && 'opacity-50 cursor-not-allowed'}`}
-            title={hasSelectedTemplate ? "Download Template" : "Select a template for at least one section to enable download"}
+            className={`luxury-button flex items-center ${
+              !hasSelectedTemplate && "opacity-50 cursor-not-allowed"
+            }`}
+            title={
+              hasSelectedTemplate
+                ? "Download Template"
+                : "Select a template for at least one section to enable download"
+            }
             disabled={!hasSelectedTemplate}
           >
             <Download size={20} />
@@ -396,7 +401,7 @@ export default function BuildArea({
             value={manualGlobalCss}
             onChange={(value) => {
               setManualGlobalCss(value);
-              console.log('Manual Global CSS updated:', value);
+              console.log("Manual Global CSS updated:", value);
             }}
             language="css"
           />
@@ -412,14 +417,14 @@ export default function BuildArea({
             value={manualGlobalJs}
             onChange={(value) => {
               setManualGlobalJs(value);
-              console.log('Manual Global JS updated:', value);
+              console.log("Manual Global JS updated:", value);
             }}
             language="javascript"
           />
         </div>
       </div>
 
-      <LivePreviewModal 
+      <LivePreviewModal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         template={template}
