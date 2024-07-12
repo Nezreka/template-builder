@@ -49,9 +49,9 @@ export default function LivePreviewModal({ isOpen, onClose, template, globalCss,
             </div>
           </div>
           <div className="p-4">
-            <div className={`w-full ${isMobileView ? 'max-w-[375px]' : 'max-w-full'} mx-auto transition-all duration-300`}>
+            <div className={`w-full ${isMobileView ? 'max-w-[400px]' : 'max-w-full'} mx-auto transition-all duration-300`}>
               <iframe 
-                className={`w-full h-[800px] border-2 border-[var(--accent-color)] ${isMobileView ? 'max-w-[375px]' : 'max-w-full'}`}
+                className={`w-full h-[800px] border-2 border-[var(--accent-color)] ${isMobileView ? 'max-w-[400px]' : 'max-w-full'}`}
                 srcDoc={generatePreviewHTML(template, globalCss, globalJs)}
                 title="Template Preview"
               />

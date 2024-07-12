@@ -243,13 +243,17 @@ export default function BuildArea({
   const getCombinedGlobals = useCallback(() => {
     let combinedCss = manualGlobalCss;
     let combinedJs = manualGlobalJs;
+    const processedTemplates = new Set();
 
     template.forEach((section) => {
-      if (section.content?.globalCss) {
-        combinedCss += "\n" + section.content.globalCss;
-      }
-      if (section.content?.globalJs) {
-        combinedJs += "\n" + section.content.globalJs;
+      if (section.selectedTemplate && !processedTemplates.has(section.selectedTemplate)) {
+        if (section.content?.globalCss) {
+          combinedCss += "\n" + section.content.globalCss;
+        }
+        if (section.content?.globalJs) {
+          combinedJs += "\n" + section.content.globalJs;
+        }
+        processedTemplates.add(section.selectedTemplate);
       }
     });
 
